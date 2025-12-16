@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { TreePine, MapPin, Calendar, Users, ArrowRight, Leaf, Sun, Wind } from "lucide-react";
+import { TreePine, MapPin, Calendar, Users, ArrowRight, Leaf, Sun, Phone } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
+
+import heroImage from "@/assets/table-1500.png";
 
 const features = [
   {
@@ -35,8 +37,8 @@ export default function HomePage() {
         <div className="absolute inset-0 nature-gradient opacity-10" />
         
         {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-secondary/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-secondary/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
         
         <div className="container mx-auto container-padding relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-8">
@@ -45,16 +47,16 @@ export default function HomePage() {
               Plateau Lalla Setti, Tlemcen
             </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground leading-tight animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground leading-tight animate-fade-in" style={{ animationDelay: "0.1s" }}>
               Bienvenue à{" "}
               <span className="text-primary">Green Paradise</span>
             </h1>
             
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.2s" }}>
               Un havre de paix au cœur de la nature. Découvrez notre espace de détente avec vue panoramique sur Tlemcen.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: "0.3s" }}>
               <Button variant="nature" size="lg" asChild>
                 <Link to="/reservation">
                   <Calendar className="w-5 h-5" />
@@ -62,12 +64,22 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link to="/galerie">
-                  Découvrir le parc
+                <Link to="/plan-tables">
+                  Voir nos formules
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
             </div>
+
+            {/* Quick Contact */}
+            <a 
+              href="tel:+213770840081"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors animate-fade-in"
+              style={{ animationDelay: "0.4s" }}
+            >
+              <Phone className="w-4 h-4" />
+              <span>0770 84 00 81</span>
+            </a>
           </div>
         </div>
         
@@ -95,7 +107,7 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="group bg-card rounded-3xl p-6 lg:p-8 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className="group bg-card rounded-3xl p-6 lg:p-8 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="w-14 h-14 rounded-2xl nature-gradient flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -128,16 +140,29 @@ export default function HomePage() {
               <p className="text-primary-foreground/80 text-lg">
                 Réservez votre table dès maintenant et profitez d'un moment inoubliable en famille ou entre amis.
               </p>
-              <Button
-                size="lg"
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                asChild
-              >
-                <Link to="/reservation">
-                  <Calendar className="w-5 h-5" />
-                  Réserver une table
-                </Link>
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  size="lg"
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                  asChild
+                >
+                  <Link to="/reservation">
+                    <Calendar className="w-5 h-5" />
+                    Réserver une table
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                  asChild
+                >
+                  <a href="tel:+213770840081">
+                    <Phone className="w-5 h-5" />
+                    0770 84 00 81
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -157,7 +182,7 @@ export default function HomePage() {
                 ambiance chaleureuse pour des moments de détente inoubliables.
               </p>
               <ul className="space-y-3">
-                {["Tables spacieuses en plein air", "Zone ombragée et ventilée", "Parking gratuit", "Accès facile"].map((item) => (
+                {["Tables spacieuses en plein air", "Zone ombragée et ventilée", "Barbecue disponible", "Jeux pour enfants", "Parking gratuit"].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-foreground">
                     <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                       <Leaf className="w-3 h-3 text-primary" />
@@ -174,12 +199,13 @@ export default function HomePage() {
               </Button>
             </div>
             
-            {/* Placeholder for image */}
-            <div className="aspect-[4/3] rounded-3xl bg-gradient-to-br from-secondary/50 to-primary/20 flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <Wind className="w-16 h-16 text-primary/40 mx-auto" />
-                <p className="text-muted-foreground text-sm">Image placeholder</p>
-              </div>
+            {/* Image */}
+            <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-xl">
+              <img 
+                src={heroImage} 
+                alt="Espace détente Green Paradise" 
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+              />
             </div>
           </div>
         </div>

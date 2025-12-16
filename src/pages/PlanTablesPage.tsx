@@ -1,41 +1,81 @@
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { MapPin, Users, TreePine, Sun, Eye } from "lucide-react";
+import { Users, Flame, Gamepad2, TreePine, Armchair, Star } from "lucide-react";
 
-const tables = [
-  { id: 1, name: "Table A1", capacity: 4, zone: "Zone Ombragée", available: true },
-  { id: 2, name: "Table A2", capacity: 6, zone: "Zone Ombragée", available: true },
-  { id: 3, name: "Table B1", capacity: 4, zone: "Zone Panoramique", available: false },
-  { id: 4, name: "Table B2", capacity: 8, zone: "Zone Panoramique", available: true },
-  { id: 5, name: "Table C1", capacity: 4, zone: "Zone Jardin", available: true },
-  { id: 6, name: "Table C2", capacity: 6, zone: "Zone Jardin", available: true },
-  { id: 7, name: "Table D1", capacity: 10, zone: "Zone Famille", available: false },
-  { id: 8, name: "Table D2", capacity: 8, zone: "Zone Famille", available: true },
+import table500 from "@/assets/table-500.png";
+import table1000 from "@/assets/table-1000.png";
+import table1500 from "@/assets/table-1500.png";
+import table3000 from "@/assets/table-3000.png";
+import table5000 from "@/assets/table-5000.png";
+
+const formules = [
+  {
+    id: 1,
+    name: "Formule Essentielle",
+    price: 500,
+    capacity: 4,
+    image: table500,
+    features: ["Jeu"],
+    popular: false,
+    color: "from-emerald-500/20 to-emerald-600/10",
+  },
+  {
+    id: 2,
+    name: "Formule Confort",
+    price: 1000,
+    capacity: 4,
+    image: table1000,
+    features: ["Jeu", "Barbecue"],
+    popular: false,
+    color: "from-teal-500/20 to-teal-600/10",
+  },
+  {
+    id: 3,
+    name: "Formule Famille",
+    price: 1500,
+    capacity: 6,
+    image: table1500,
+    features: ["Jeu", "Barbecue", "Balançoire"],
+    popular: true,
+    color: "from-green-500/20 to-green-600/10",
+  },
+  {
+    id: 4,
+    name: "Formule Premium",
+    price: 3000,
+    capacity: 8,
+    image: table3000,
+    features: ["Jeu", "Balançoire", "Barbecue", "Transat"],
+    popular: false,
+    color: "from-lime-500/20 to-lime-600/10",
+  },
+  {
+    id: 5,
+    name: "Formule VIP",
+    price: 5000,
+    capacity: 15,
+    image: table5000,
+    features: ["Barbecue", "Jeu"],
+    popular: false,
+    color: "from-yellow-500/20 to-yellow-600/10",
+  },
 ];
 
-const zones = [
-  {
-    name: "Zone Ombragée",
-    icon: TreePine,
-    description: "Tables sous les arbres, idéales pour les journées chaudes.",
-  },
-  {
-    name: "Zone Panoramique",
-    icon: Eye,
-    description: "Vue imprenable sur Tlemcen, parfait pour les couchers de soleil.",
-  },
-  {
-    name: "Zone Jardin",
-    icon: Sun,
-    description: "Au milieu des fleurs et de la verdure.",
-  },
-  {
-    name: "Zone Famille",
-    icon: Users,
-    description: "Grandes tables pour les groupes et familles.",
-  },
-];
+const getFeatureIcon = (feature: string) => {
+  switch (feature) {
+    case "Jeu":
+      return Gamepad2;
+    case "Barbecue":
+      return Flame;
+    case "Balançoire":
+      return TreePine;
+    case "Transat":
+      return Armchair;
+    default:
+      return Star;
+  }
+};
 
 export default function PlanTablesPage() {
   return (
@@ -43,98 +83,106 @@ export default function PlanTablesPage() {
       {/* Hero */}
       <section className="py-16 lg:py-24 bg-muted/50">
         <div className="container mx-auto container-padding text-center space-y-6">
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
-            Plan des Tables
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
+            Nos Formules
           </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            Découvrez nos différentes zones et choisissez l'emplacement idéal pour votre visite.
+          <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            Choisissez la formule qui correspond à vos besoins et profitez d'un moment unique à Green Paradise.
           </p>
         </div>
       </section>
 
-      {/* Zones */}
-      <section className="py-16 lg:py-20">
+      {/* Formules Grid */}
+      <section className="py-16 lg:py-24">
         <div className="container mx-auto container-padding">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-10 text-center">
-            Nos Zones
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {zones.map((zone) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {formules.map((formule, index) => (
               <div
-                key={zone.name}
-                className="bg-card rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="w-12 h-12 rounded-2xl nature-gradient flex items-center justify-center mb-4">
-                  <zone.icon className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{zone.name}</h3>
-                <p className="text-sm text-muted-foreground">{zone.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Map Placeholder */}
-      <section className="py-16 lg:py-20 bg-muted/50">
-        <div className="container mx-auto container-padding">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-10 text-center">
-            Plan du Parc
-          </h2>
-          <div className="aspect-[16/9] max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-secondary/30 to-primary/10 flex items-center justify-center border-2 border-dashed border-border">
-            <div className="text-center space-y-4">
-              <MapPin className="w-16 h-16 text-primary/40 mx-auto" />
-              <p className="text-muted-foreground">Plan interactif - Placeholder</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tables List */}
-      <section className="py-16 lg:py-20">
-        <div className="container mx-auto container-padding">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-10 text-center">
-            Toutes nos Tables
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {tables.map((table) => (
-              <div
-                key={table.id}
-                className={`bg-card rounded-2xl p-5 border-2 transition-all ${
-                  table.available
-                    ? "border-secondary hover:border-primary"
-                    : "border-border opacity-60"
+                key={formule.id}
+                className={`group relative bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${
+                  formule.popular ? "ring-2 ring-primary md:scale-105" : ""
                 }`}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-foreground">{table.name}</h3>
-                  <span
-                    className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                      table.available
-                        ? "bg-secondary text-secondary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {table.available ? "Disponible" : "Occupée"}
-                  </span>
+                {/* Popular Badge */}
+                {formule.popular && (
+                  <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold animate-pulse">
+                    Populaire
+                  </div>
+                )}
+
+                {/* Image */}
+                <div className="relative h-56 overflow-hidden">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${formule.color}`} />
+                  <img
+                    src={formule.image}
+                    alt={formule.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                 </div>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    {table.capacity} personnes
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    {table.zone}
-                  </p>
+
+                {/* Content */}
+                <div className="p-6 space-y-4">
+                  {/* Header */}
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-foreground">{formule.name}</h3>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">{formule.capacity} personnes</span>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div className="flex flex-wrap gap-2">
+                    {formule.features.map((feature) => {
+                      const Icon = getFeatureIcon(feature);
+                      return (
+                        <span
+                          key={feature}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium text-secondary-foreground"
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          {feature}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* Price */}
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <span className="text-3xl font-bold text-primary">{formule.price}</span>
+                        <span className="text-lg text-muted-foreground ml-1">DA</span>
+                      </div>
+                      <Button variant="nature" size="sm" asChild className="group-hover:scale-105 transition-transform">
+                        <Link to="/reservation">Réserver</Link>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-          
-          <div className="text-center mt-12">
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 lg:py-20 bg-muted/50">
+        <div className="container mx-auto container-padding text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Besoin d'informations supplémentaires ?
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Contactez-nous pour toute question sur nos formules ou pour une demande personnalisée.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="nature" size="lg" asChild>
-              <Link to="/reservation">Réserver une table</Link>
+              <a href="tel:+213770840081">Appeler : 0770 84 00 81</a>
+            </Button>
+            <Button variant="outline" size="lg" asChild>
+              <Link to="/contact">Nous contacter</Link>
             </Button>
           </div>
         </div>

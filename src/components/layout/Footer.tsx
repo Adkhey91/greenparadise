@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { TreePine, MapPin, Phone, Mail, Instagram, Facebook } from "lucide-react";
+import { TreePine, MapPin, Phone, Instagram, Facebook } from "lucide-react";
 
 export function Footer() {
   return (
@@ -45,17 +45,18 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold">Contact</h4>
             <div className="flex flex-col gap-3">
-              <a href="#" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
+              <a 
+                href="https://maps.google.com/?q=Plateau+Lalla+Setti+Tlemcen" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm"
+              >
                 <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span>Plateau Lalla Setti, Tlemcen</span>
               </a>
-              <a href="#" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
+              <a href="tel:+213770840081" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
                 <Phone className="w-4 h-4 flex-shrink-0" />
-                <span>+213 XX XX XX XX</span>
-              </a>
-              <a href="#" className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
-                <Mail className="w-4 h-4 flex-shrink-0" />
-                <span>contact@placeholder.com</span>
+                <span>0770 84 00 81</span>
               </a>
             </div>
           </div>
@@ -65,14 +66,18 @@ export function Footer() {
             <h4 className="font-semibold">Suivez-nous</h4>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://www.instagram.com/greenparadisetlemcen/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center hover:bg-primary-foreground/30 transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/profile.php?id=61571202361668"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center hover:bg-primary-foreground/30 transition-colors"
                 aria-label="Facebook"
               >
