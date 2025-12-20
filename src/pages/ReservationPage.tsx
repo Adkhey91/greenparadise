@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Users, Clock, MapPin, Phone, Mail, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const formuleValues = ["500da", "1000da", "1500da", "3000da", "5000da"] as const;
 
 const formules = [
   { value: "500da", label: "Formule 500 DA - 4 personnes + jeu" },
@@ -12,6 +15,25 @@ const formules = [
   { value: "3000da", label: "Formule 3000 DA - 8 personnes + jeu + balançoire + barbecue + transat" },
   { value: "5000da", label: "Formule 5000 DA - 15 personnes + barbecue + jeu" },
 ];
+
+const reservationSchema = z.object({
+  nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100, "Le nom ne peut pas dépasser 100 caractères"),
+  telephone: z.string().regex(/^[0-9\s]{8,20}$/, "Numéro de téléphone invalide (8-20 chiffres)"),
+  email: z.string().trim().email("Adresse email invalide").max(255, "L'email ne peut pas dépasser 255 caractères").optional().or(z.literal("")),
+  date: z.string().min(1, "La date est requise").refine((val) => {
+    const date = new Date(val);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
+  }, "La date doit être aujourd'hui ou dans le futur"),
+  formule: z.enum(formuleValues, { errorMap: () => ({ message: "Veuillez sélectionner une formule valide" }) }),
+  nombrePersonnes: z.string().optional().refine((val) => {
+    if (!val) return true;
+    const num = parseInt(val);
+    return num >= 1 && num <= 50;
+  }, "Nombre de personnes invalide"),
+  message: z.string().trim().max(1000, "Le message ne peut pas dépasser 1000 caractères").optional().or(z.literal("")),
+});
 
 export default function ReservationPage() {
   const { toast } = useToast();
@@ -34,25 +56,27 @@ export default function ReservationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nom || !formData.telephone || !formData.date || !formData.formule) {
+    const validation = reservationSchema.safeParse(formData);
+    if (!validation.success) {
       toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires.",
+        title: "Erreur de validation",
+        description: validation.error.errors[0].message,
         variant: "destructive",
       });
       return;
     }
 
+    const validatedData = validation.data;
     setIsSubmitting(true);
     
     const { error } = await supabase.from("reservations").insert({
-      nom: formData.nom,
-      telephone: formData.telephone,
-      email: formData.email || null,
-      date_reservation: formData.date,
-      formule: formData.formule,
-      nombre_personnes: formData.nombrePersonnes ? parseInt(formData.nombrePersonnes) : null,
-      message: formData.message || null,
+      nom: validatedData.nom,
+      telephone: validatedData.telephone,
+      email: validatedData.email || null,
+      date_reservation: validatedData.date,
+      formule: validatedData.formule,
+      nombre_personnes: validatedData.nombrePersonnes ? parseInt(validatedData.nombrePersonnes) : null,
+      message: validatedData.message || null,
     });
 
     setIsSubmitting(false);

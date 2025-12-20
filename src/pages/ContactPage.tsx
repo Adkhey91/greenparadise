@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Clock, Instagram, Facebook, CheckCircle, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const contactSchema = z.object({
+  nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100, "Le nom ne peut pas dépasser 100 caractères"),
+  email: z.string().trim().email("Adresse email invalide").max(255, "L'email ne peut pas dépasser 255 caractères"),
+  telephone: z.string().regex(/^[0-9\s]{0,20}$/, "Numéro de téléphone invalide").optional().or(z.literal("")),
+  sujet: z.enum(["", "reservation", "information", "evenement", "autre"]).optional(),
+  message: z.string().trim().min(10, "Le message doit contenir au moins 10 caractères").max(2000, "Le message ne peut pas dépasser 2000 caractères"),
+});
 
 export default function ContactPage() {
   const { toast } = useToast();
@@ -24,23 +33,25 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nom || !formData.email || !formData.message) {
+    const validation = contactSchema.safeParse(formData);
+    if (!validation.success) {
       toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires.",
+        title: "Erreur de validation",
+        description: validation.error.errors[0].message,
         variant: "destructive",
       });
       return;
     }
 
+    const validatedData = validation.data;
     setIsSubmitting(true);
     
     const { error } = await supabase.from("messages_contact").insert({
-      nom: formData.nom,
-      email: formData.email,
-      telephone: formData.telephone || null,
-      sujet: formData.sujet || null,
-      message: formData.message,
+      nom: validatedData.nom,
+      email: validatedData.email,
+      telephone: validatedData.telephone || null,
+      sujet: validatedData.sujet || null,
+      message: validatedData.message,
     });
 
     setIsSubmitting(false);
