@@ -1,20 +1,91 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Clock, MapPin, Phone, Mail, CheckCircle } from "lucide-react";
+import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const formuleValues = ["500da", "1000da", "1500da", "3000da", "5000da"] as const;
+import table500 from "@/assets/table-500.png";
+import table1000 from "@/assets/table-1000.png";
+import table1500 from "@/assets/table-1500.png";
+import table3000 from "@/assets/table-3000.png";
+import table5000 from "@/assets/table-5000.png";
 
 const formules = [
-  { value: "500da", label: "Formule 500 DA - 4 personnes + jeu" },
-  { value: "1000da", label: "Formule 1000 DA - 4 personnes + jeu + barbecue" },
-  { value: "1500da", label: "Formule 1500 DA - 6 personnes + jeu + barbecue + balançoire" },
-  { value: "3000da", label: "Formule 3000 DA - 8 personnes + jeu + balançoire + barbecue + transat" },
-  { value: "5000da", label: "Formule 5000 DA - 15 personnes + barbecue + jeu" },
+  {
+    id: 1,
+    name: "Formule Essentielle",
+    value: "500da",
+    price: 500,
+    capacity: 4,
+    image: table500,
+    features: ["Jeu"],
+    popular: false,
+    color: "from-emerald-500/20 to-emerald-600/10",
+  },
+  {
+    id: 2,
+    name: "Formule Confort",
+    value: "1000da",
+    price: 1000,
+    capacity: 4,
+    image: table1000,
+    features: ["Jeu", "Barbecue"],
+    popular: false,
+    color: "from-teal-500/20 to-teal-600/10",
+  },
+  {
+    id: 3,
+    name: "Formule Famille",
+    value: "1500da",
+    price: 1500,
+    capacity: 6,
+    image: table1500,
+    features: ["Jeu", "Barbecue", "Balançoire"],
+    popular: true,
+    color: "from-green-500/20 to-green-600/10",
+  },
+  {
+    id: 4,
+    name: "Formule Premium",
+    value: "3000da",
+    price: 3000,
+    capacity: 8,
+    image: table3000,
+    features: ["Jeu", "Balançoire", "Barbecue", "Transat"],
+    popular: false,
+    color: "from-lime-500/20 to-lime-600/10",
+  },
+  {
+    id: 5,
+    name: "Formule VIP",
+    value: "5000da",
+    price: 5000,
+    capacity: 15,
+    image: table5000,
+    features: ["Barbecue", "Jeu"],
+    popular: false,
+    color: "from-yellow-500/20 to-yellow-600/10",
+  },
 ];
+
+const getFeatureIcon = (feature: string) => {
+  switch (feature) {
+    case "Jeu":
+      return Gamepad2;
+    case "Barbecue":
+      return Flame;
+    case "Balançoire":
+      return TreePine;
+    case "Transat":
+      return Armchair;
+    default:
+      return Star;
+  }
+};
+
+const formuleValues = ["500da", "1000da", "1500da", "3000da", "5000da"] as const;
 
 const reservationSchema = z.object({
   nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100, "Le nom ne peut pas dépasser 100 caractères"),
@@ -37,6 +108,8 @@ const reservationSchema = z.object({
 
 export default function ReservationPage() {
   const { toast } = useToast();
+  const [step, setStep] = useState<"formules" | "form">("formules");
+  const [selectedFormule, setSelectedFormule] = useState<typeof formules[0] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,6 +121,16 @@ export default function ReservationPage() {
     nombrePersonnes: "",
     message: "",
   });
+
+  const handleSelectFormule = (formule: typeof formules[0]) => {
+    setSelectedFormule(formule);
+    setFormData({ ...formData, formule: formule.value });
+    setStep("form");
+  };
+
+  const handleBack = () => {
+    setStep("formules");
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -102,6 +185,12 @@ export default function ReservationPage() {
     });
   };
 
+  const handleNewReservation = () => {
+    setIsSuccess(false);
+    setStep("formules");
+    setSelectedFormule(null);
+  };
+
   if (isSuccess) {
     return (
       <Layout>
@@ -117,7 +206,7 @@ export default function ReservationPage() {
               <p className="text-muted-foreground">
                 Merci pour votre réservation. Nous vous contacterons très bientôt pour confirmer votre réservation.
               </p>
-              <Button variant="nature" onClick={() => setIsSuccess(false)}>
+              <Button variant="nature" onClick={handleNewReservation}>
                 Nouvelle réservation
               </Button>
             </div>
@@ -127,17 +216,142 @@ export default function ReservationPage() {
     );
   }
 
+  // Step 1: Choose formule
+  if (step === "formules") {
+    return (
+      <Layout>
+        {/* Hero */}
+        <section className="py-16 lg:py-24 bg-muted/50">
+          <div className="container mx-auto container-padding text-center space-y-6">
+            <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
+              Réservation
+            </h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              Choisissez la formule qui correspond à vos besoins et profitez d'un moment unique à Green Paradise.
+            </p>
+          </div>
+        </section>
+
+        {/* Formules Grid */}
+        <section className="py-16 lg:py-24">
+          <div className="container mx-auto container-padding">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              {formules.map((formule, index) => (
+                <div
+                  key={formule.id}
+                  className={`group relative bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${
+                    formule.popular ? "ring-2 ring-primary md:scale-105" : ""
+                  }`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Popular Badge */}
+                  {formule.popular && (
+                    <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold animate-pulse">
+                      Populaire
+                    </div>
+                  )}
+
+                  {/* Image */}
+                  <div className="relative h-56 overflow-hidden">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${formule.color}`} />
+                    <img
+                      src={formule.image}
+                      alt={formule.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 space-y-4">
+                    {/* Header */}
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-foreground">{formule.name}</h3>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="w-4 h-4" />
+                        <span className="text-sm">{formule.capacity} personnes</span>
+                      </div>
+                    </div>
+
+                    {/* Features */}
+                    <div className="flex flex-wrap gap-2">
+                      {formule.features.map((feature) => {
+                        const Icon = getFeatureIcon(feature);
+                        return (
+                          <span
+                            key={feature}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium text-secondary-foreground"
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            {feature}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Price */}
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <span className="text-3xl font-bold text-primary">{formule.price}</span>
+                          <span className="text-lg text-muted-foreground ml-1">DA</span>
+                        </div>
+                        <Button 
+                          variant="nature" 
+                          size="sm" 
+                          className="group-hover:scale-105 transition-transform"
+                          onClick={() => handleSelectFormule(formule)}
+                        >
+                          Réserver
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-16 lg:py-20 bg-muted/50">
+          <div className="container mx-auto container-padding text-center space-y-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+              Besoin d'informations supplémentaires ?
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Contactez-nous pour toute question sur nos formules ou pour une demande personnalisée.
+            </p>
+            <Button variant="nature" size="lg" asChild>
+              <a href="tel:+213770840081">Appeler : 0770 84 00 81</a>
+            </Button>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  // Step 2: Reservation form
   return (
     <Layout>
       {/* Hero */}
       <section className="py-16 lg:py-24 bg-muted/50">
-        <div className="container mx-auto container-padding text-center space-y-6">
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
-            Réservation
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            Réservez votre table et profitez d'un moment de détente au cœur de la nature.
-          </p>
+        <div className="container mx-auto container-padding">
+          <button 
+            onClick={handleBack}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux formules
+          </button>
+          <div className="text-center space-y-6">
+            <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
+              Réserver {selectedFormule?.name}
+            </h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {selectedFormule?.price} DA • {selectedFormule?.capacity} personnes
+            </p>
+          </div>
         </div>
       </section>
 
@@ -225,20 +439,18 @@ export default function ReservationPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Formule *</label>
-                  <select 
-                    name="formule"
-                    value={formData.formule}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    required
-                  >
-                    <option value="">Choisir une formule</option>
-                    {formules.map((f) => (
-                      <option key={f.value} value={f.value}>{f.label}</option>
-                    ))}
-                  </select>
+                {/* Selected formule display */}
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-foreground">{selectedFormule?.name}</p>
+                      <p className="text-sm text-muted-foreground">{selectedFormule?.features.join(" • ")}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-bold text-primary">{selectedFormule?.price}</span>
+                      <span className="text-muted-foreground ml-1">DA</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

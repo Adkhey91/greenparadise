@@ -64,7 +64,7 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link to="/plan-tables">
+                <Link to="/reservation">
                   Voir nos formules
                   <ArrowRight className="w-5 h-5" />
                 </Link>
