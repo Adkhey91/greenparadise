@@ -26,9 +26,6 @@ export function Footer() {
               <Link to="/" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
                 Accueil
               </Link>
-              <Link to="/plan-tables" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
-                Plan des Tables
-              </Link>
               <Link to="/reservation" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm">
                 Réservation
               </Link>
@@ -89,9 +86,12 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-primary-foreground/20 text-center">
-          <p className="text-primary-foreground/60 text-sm">
+          <Link 
+            to="/admin/login" 
+            className="text-primary-foreground/60 text-sm hover:text-primary-foreground/80 transition-colors"
+          >
             © 2024 Green Paradise. Tous droits réservés.
-          </p>
+          </Link>
         </div>
       </div>
     </footer>
