@@ -1,9 +1,11 @@
 import { useOutletContext } from "react-router-dom";
 import { StatsCards } from "@/components/admin/StatsCards";
+import { RevenueStats } from "@/components/admin/RevenueStats";
+import { RevenueChart } from "@/components/admin/RevenueChart";
 import { ReservationsChart } from "@/components/admin/ReservationsChart";
 import { FormulasPieChart } from "@/components/admin/FormulasPieChart";
 import { RecentActivity } from "@/components/admin/RecentActivity";
-import { startOfDay, isToday, parseISO } from "date-fns";
+import { isToday, parseISO } from "date-fns";
 
 interface AdminContextData {
   reservations: any[];
@@ -33,6 +35,9 @@ export default function OverviewPage() {
         </p>
       </div>
 
+      {/* Revenue Stats */}
+      <RevenueStats reservations={reservations} />
+
       {/* Stats Cards */}
       <StatsCards
         totalReservations={reservations.length}
@@ -42,10 +47,15 @@ export default function OverviewPage() {
         todayReservations={todayReservations}
       />
 
-      {/* Charts Grid */}
+      {/* Revenue Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <RevenueChart reservations={reservations} />
+        <FormulasPieChart reservations={reservations} />
+      </div>
+
+      {/* Reservations Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ReservationsChart reservations={reservations} />
-        <FormulasPieChart reservations={reservations} />
       </div>
 
       {/* Recent Activity */}
