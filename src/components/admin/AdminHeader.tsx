@@ -1,4 +1,4 @@
-import { Bell, LogOut, Search, User } from "lucide-react";
+import { LogOut, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "./NotificationBell";
 
 interface AdminHeaderProps {
   userEmail: string;
@@ -35,17 +35,8 @@ export function AdminHeader({ userEmail, unreadCount, onSignOut, onSearch }: Adm
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-destructive"
-            >
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </Badge>
-          )}
-        </Button>
+        {/* Notifications with Realtime */}
+        <NotificationBell unreadCount={unreadCount} />
 
         {/* User Menu */}
         <DropdownMenu>
