@@ -9,7 +9,11 @@ import ReservationPage from "./pages/ReservationPage";
 import GaleriePage from "./pages/GaleriePage";
 import ContactPage from "./pages/ContactPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import OverviewPage from "./pages/admin/OverviewPage";
+import ReservationsPage from "./pages/admin/ReservationsPage";
+import MessagesPage from "./pages/admin/MessagesPage";
+import SettingsPage from "./pages/admin/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,7 +31,12 @@ const App = () => (
             <Route path="/galerie" element={<GaleriePage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<OverviewPage />} />
+              <Route path="reservations" element={<ReservationsPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
