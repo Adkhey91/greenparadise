@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      formulas: {
+        Row: {
+          actif: boolean
+          created_at: string
+          description_courte: string | null
+          id: string
+          nb_personnes: number
+          nom: string
+          photo_filename: string | null
+          photo_url: string | null
+          prix_dzd: number
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          description_courte?: string | null
+          id?: string
+          nb_personnes?: number
+          nom: string
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd?: number
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          description_courte?: string | null
+          id?: string
+          nb_personnes?: number
+          nom?: string
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd?: number
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages_contact: {
         Row: {
           created_at: string
@@ -46,6 +88,44 @@ export type Database = {
           telephone?: string | null
         }
         Relationships: []
+      }
+      park_tables: {
+        Row: {
+          capacite: number
+          created_at: string
+          formule_id: string
+          id: string
+          nom_ou_numero: string
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          capacite?: number
+          created_at?: string
+          formule_id: string
+          id?: string
+          nom_ou_numero: string
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          capacite?: number
+          created_at?: string
+          formule_id?: string
+          id?: string
+          nom_ou_numero?: string
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "park_tables_formule_id_fkey"
+            columns: ["formule_id"]
+            isOneToOne: false
+            referencedRelation: "formulas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservations: {
         Row: {
