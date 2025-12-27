@@ -14,6 +14,7 @@ import OverviewPage from "./pages/admin/OverviewPage";
 import ReservationsPage from "./pages/admin/ReservationsPage";
 import MessagesPage from "./pages/admin/MessagesPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import GardenManagementPage from "./pages/admin/GardenManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<OverviewPage />} />
+              <Route path="garden" element={<GardenManagementPage />} />
               <Route path="reservations" element={<ReservationsPage />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="settings" element={<SettingsPage />} />
