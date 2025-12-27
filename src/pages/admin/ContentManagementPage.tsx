@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -37,7 +37,11 @@ import {
   Coffee,
   Gamepad2,
   Wrench,
-  GripVertical
+  ImageIcon,
+  Eye,
+  EyeOff,
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 
 type SectionType = 'restaurant' | 'cafeteria' | 'activites' | 'services';
@@ -57,11 +61,31 @@ interface ContentSection {
   updated_at: string;
 }
 
-const SECTION_CONFIG: Record<SectionType, { label: string; icon: typeof UtensilsCrossed; color: string }> = {
-  restaurant: { label: 'Restaurant', icon: UtensilsCrossed, color: 'bg-orange-500' },
-  cafeteria: { label: 'Cafétéria', icon: Coffee, color: 'bg-amber-500' },
-  activites: { label: 'Activités', icon: Gamepad2, color: 'bg-blue-500' },
-  services: { label: 'Services', icon: Wrench, color: 'bg-purple-500' },
+const SECTION_CONFIG: Record<SectionType, { label: string; icon: typeof UtensilsCrossed; gradient: string; bgColor: string }> = {
+  restaurant: { 
+    label: 'Restaurant', 
+    icon: UtensilsCrossed, 
+    gradient: 'from-orange-500 to-red-500',
+    bgColor: 'bg-orange-500/10'
+  },
+  cafeteria: { 
+    label: 'Cafétéria', 
+    icon: Coffee, 
+    gradient: 'from-amber-500 to-orange-500',
+    bgColor: 'bg-amber-500/10'
+  },
+  activites: { 
+    label: 'Activités', 
+    icon: Gamepad2, 
+    gradient: 'from-blue-500 to-cyan-500',
+    bgColor: 'bg-blue-500/10'
+  },
+  services: { 
+    label: 'Services', 
+    icon: Wrench, 
+    gradient: 'from-purple-500 to-pink-500',
+    bgColor: 'bg-purple-500/10'
+  },
 };
 
 const AVAILABLE_TAGS: Record<SectionType, string[]> = {
@@ -76,7 +100,6 @@ export default function ContentManagementPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<SectionType>('restaurant');
   
-  // Form state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<ContentSection | null>(null);
   const [form, setForm] = useState({
@@ -248,8 +271,29 @@ export default function ContentManagementPage() {
     }));
   };
 
+  const toggleActive = async (section: ContentSection) => {
+    const { error } = await supabase
+      .from('content_sections')
+      .update({ actif: !section.actif })
+      .eq('id', section.id);
+
+    if (error) {
+      toast.error('Erreur');
+      return;
+    }
+    toast.success(section.actif ? 'Désactivé' : 'Activé');
+    fetchSections();
+  };
+
   const filteredSections = sections.filter(s => s.section_type === activeTab);
   const config = SECTION_CONFIG[activeTab];
+
+  // Stats par section
+  const stats = {
+    total: filteredSections.length,
+    active: filteredSections.filter(s => s.actif).length,
+    withPhoto: filteredSections.filter(s => s.photo_url).length,
+  };
 
   if (loading) {
     return (
@@ -261,117 +305,231 @@ export default function ContentManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Gestion du Contenu</h1>
-          <p className="text-muted-foreground">Restaurant, Cafétéria, Activités et Services</p>
+      {/* Header avec gradient */}
+      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${config.gradient} p-6 text-white`}>
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+              <config.icon className="h-7 w-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Gestion du Contenu</h1>
+              <p className="text-white/80">Restaurant, Cafétéria, Activités et Services</p>
+            </div>
+          </div>
+          
+          <Button 
+            onClick={() => openDialog()} 
+            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border-0 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter
+          </Button>
         </div>
       </div>
 
+      {/* Stats rapides */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className={`${config.bgColor} border-0`}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`p-2 rounded-lg bg-gradient-to-r ${config.gradient}`}>
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-sm text-muted-foreground">Total</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={`${config.bgColor} border-0`}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`p-2 rounded-lg bg-gradient-to-r ${config.gradient}`}>
+              <Eye className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.active}</p>
+              <p className="text-sm text-muted-foreground">Actifs</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={`${config.bgColor} border-0`}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`p-2 rounded-lg bg-gradient-to-r ${config.gradient}`}>
+              <ImageIcon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.withPhoto}</p>
+              <p className="text-sm text-muted-foreground">Avec photo</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SectionType)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4 h-12 p-1 bg-muted/50">
           {(Object.keys(SECTION_CONFIG) as SectionType[]).map(type => {
             const cfg = SECTION_CONFIG[type];
+            const count = sections.filter(s => s.section_type === type).length;
             return (
-              <TabsTrigger key={type} value={type} className="gap-2">
+              <TabsTrigger 
+                key={type} 
+                value={type} 
+                className={`gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:${cfg.gradient} data-[state=active]:text-white transition-all`}
+              >
                 <cfg.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{cfg.label}</span>
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {count}
+                </Badge>
               </TabsTrigger>
             );
           })}
         </TabsList>
 
         {(Object.keys(SECTION_CONFIG) as SectionType[]).map(type => (
-          <TabsContent key={type} value={type} className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{SECTION_CONFIG[type].label}</h2>
-              <Button onClick={() => openDialog()} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Ajouter
-              </Button>
-            </div>
-
+          <TabsContent key={type} value={type} className="space-y-4 mt-6">
             {filteredSections.length === 0 ? (
-              <Card className="p-8 text-center text-muted-foreground">
-                Aucun élément dans cette section
+              <Card className="p-12 text-center border-dashed border-2">
+                <div className={`mx-auto w-16 h-16 rounded-full ${config.bgColor} flex items-center justify-center mb-4`}>
+                  <config.icon className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-semibold text-lg mb-2">Aucun élément</h3>
+                <p className="text-muted-foreground mb-4">
+                  Commencez par ajouter du contenu à cette section
+                </p>
+                <Button onClick={() => openDialog()} className={`bg-gradient-to-r ${config.gradient} border-0`}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ajouter un élément
+                </Button>
               </Card>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredSections.map(section => (
-                  <Card key={section.id} className={`${!section.actif ? 'opacity-60' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        <div className="flex items-center text-muted-foreground">
-                          <GripVertical className="w-5 h-5" />
+                  <Card 
+                    key={section.id} 
+                    className={`group overflow-hidden transition-all duration-300 hover:shadow-lg ${!section.actif ? 'opacity-60' : ''}`}
+                  >
+                    {/* Image */}
+                    <div className="relative h-40 overflow-hidden">
+                      {section.photo_url ? (
+                        <img 
+                          src={section.photo_url} 
+                          alt={section.titre}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className={`w-full h-full ${config.bgColor} flex items-center justify-center`}>
+                          <ImageIcon className="w-12 h-12 text-muted-foreground/50" />
                         </div>
-                        
-                        {section.photo_url && (
-                          <img 
-                            src={section.photo_url} 
-                            alt={section.titre}
-                            className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
-                          />
+                      )}
+                      
+                      {/* Overlay badges */}
+                      <div className="absolute top-3 left-3 flex gap-2">
+                        {section.prix_dzd && (
+                          <Badge className={`bg-gradient-to-r ${config.gradient} border-0 text-white font-bold`}>
+                            {section.prix_dzd.toLocaleString()} DA
+                          </Badge>
                         )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-foreground truncate">{section.titre}</h3>
-                            {!section.actif && (
-                              <Badge variant="secondary">Inactif</Badge>
-                            )}
-                          </div>
-                          
-                          {section.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                              {section.description}
-                            </p>
+                      </div>
+                      
+                      <div className="absolute top-3 right-3">
+                        <Badge 
+                          variant={section.actif ? "default" : "secondary"}
+                          className={section.actif ? "bg-green-500/90 hover:bg-green-500" : ""}
+                        >
+                          {section.actif ? (
+                            <><Eye className="w-3 h-3 mr-1" /> Visible</>
+                          ) : (
+                            <><EyeOff className="w-3 h-3 mr-1" /> Masqué</>
                           )}
-                          
-                          <div className="flex flex-wrap gap-2">
-                            {section.prix_dzd && (
-                              <Badge variant="outline" className="text-primary">
-                                {section.prix_dzd} DA
-                              </Badge>
-                            )}
-                            {section.tags?.map(tag => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
+                        </Badge>
+                      </div>
+                      
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                    
+                    {/* Content */}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-bold text-foreground line-clamp-1">{section.titre}</h3>
+                        <Sparkles className={`w-4 h-4 flex-shrink-0 ${section.actif ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                      </div>
+                      
+                      {section.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                          {section.description}
+                        </p>
+                      )}
+                      
+                      {/* Tags */}
+                      {section.tags && section.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-4">
+                          {section.tags.slice(0, 3).map(tag => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {section.tags.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{section.tags.length - 3}
+                            </Badge>
+                          )}
                         </div>
+                      )}
+                      
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-2 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => toggleActive(section)}
+                          className="flex-1"
+                        >
+                          {section.actif ? (
+                            <><EyeOff className="w-4 h-4 mr-1" /> Masquer</>
+                          ) : (
+                            <><Eye className="w-4 h-4 mr-1" /> Afficher</>
+                          )}
+                        </Button>
                         
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => openDialog(section)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer cet élément ?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Cette action est irréversible.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteSection(section.id)}>
-                                  Supprimer
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => openDialog(section)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer "{section.titre}" ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Cette action est irréversible.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteSection(section.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </CardContent>
                   </Card>
@@ -382,24 +540,72 @@ export default function ContentManagementPage() {
         ))}
       </Tabs>
 
-      {/* Dialog for adding/editing */}
+      {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className={`p-2 rounded-lg bg-gradient-to-r ${config.gradient}`}>
+                <config.icon className="w-4 h-4 text-white" />
+              </div>
               {editingSection ? 'Modifier' : 'Ajouter'} - {config.label}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Photo Preview */}
             <div className="space-y-2">
-              <Label htmlFor="titre">Titre *</Label>
-              <Input
-                id="titre"
-                value={form.titre}
-                onChange={(e) => setForm(prev => ({ ...prev, titre: e.target.value }))}
-                placeholder="Nom de l'élément"
-              />
+              <Label>Photo</Label>
+              <div className={`relative h-40 rounded-xl overflow-hidden ${config.bgColor}`}>
+                {form.photo_url ? (
+                  <img 
+                    src={form.photo_url} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-12 h-12 text-muted-foreground/50" />
+                  </div>
+                )}
+                
+                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur rounded-lg text-white">
+                    <Upload className="w-4 h-4" />
+                    {uploadingPhoto ? 'Envoi...' : 'Changer la photo'}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    disabled={uploadingPhoto}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="titre">Titre *</Label>
+                <Input
+                  id="titre"
+                  value={form.titre}
+                  onChange={(e) => setForm(prev => ({ ...prev, titre: e.target.value }))}
+                  placeholder="Nom de l'élément"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="prix">Prix (DA)</Label>
+                <Input
+                  id="prix"
+                  type="number"
+                  value={form.prix_dzd}
+                  onChange={(e) => setForm(prev => ({ ...prev, prix_dzd: e.target.value }))}
+                  placeholder="Optionnel"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -414,48 +620,13 @@ export default function ContentManagementPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prix">Prix (DA)</Label>
-              <Input
-                id="prix"
-                type="number"
-                value={form.prix_dzd}
-                onChange={(e) => setForm(prev => ({ ...prev, prix_dzd: e.target.value }))}
-                placeholder="Optionnel"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Photo</Label>
-              <div className="flex gap-4 items-center">
-                {form.photo_url && (
-                  <img 
-                    src={form.photo_url} 
-                    alt="Preview" 
-                    className="w-20 h-20 rounded-lg object-cover"
-                  />
-                )}
-                <label className="flex items-center gap-2 px-4 py-2 border border-input rounded-lg cursor-pointer hover:bg-accent">
-                  <Upload className="w-4 h-4" />
-                  {uploadingPhoto ? 'Envoi...' : 'Téléverser'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    disabled={uploadingPhoto}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label>Tags</Label>
               <div className="flex flex-wrap gap-2">
                 {AVAILABLE_TAGS[activeTab].map(tag => (
                   <Badge
                     key={tag}
                     variant={form.tags.includes(tag) ? 'default' : 'outline'}
-                    className="cursor-pointer"
+                    className={`cursor-pointer transition-all ${form.tags.includes(tag) ? `bg-gradient-to-r ${config.gradient} border-0` : ''}`}
                     onClick={() => toggleTag(tag)}
                   >
                     {tag}
@@ -464,13 +635,18 @@ export default function ContentManagementPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                {form.actif ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4" />}
+                <Label htmlFor="actif" className="cursor-pointer">
+                  {form.actif ? 'Visible sur le site' : 'Masqué du site'}
+                </Label>
+              </div>
               <Switch
                 id="actif"
                 checked={form.actif}
                 onCheckedChange={(checked) => setForm(prev => ({ ...prev, actif: checked }))}
               />
-              <Label htmlFor="actif">Actif (visible sur le site)</Label>
             </div>
           </div>
 
@@ -478,7 +654,7 @@ export default function ContentManagementPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Annuler
             </Button>
-            <Button onClick={saveSection}>
+            <Button onClick={saveSection} className={`bg-gradient-to-r ${config.gradient} border-0`}>
               {editingSection ? 'Enregistrer' : 'Ajouter'}
             </Button>
           </DialogFooter>
