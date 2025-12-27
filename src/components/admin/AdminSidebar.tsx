@@ -7,7 +7,8 @@ import {
   Leaf,
   ChevronLeft,
   ChevronRight,
-  Trees
+  Trees,
+  UtensilsCrossed
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ interface AdminSidebarProps {
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Vue d'ensemble", end: true },
   { to: "/admin/garden", icon: Trees, label: "Gestion du Jardin" },
+  { to: "/admin/content", icon: UtensilsCrossed, label: "Contenu" },
   { to: "/admin/reservations", icon: Calendar, label: "Réservations" },
   { to: "/admin/messages", icon: MessageSquare, label: "Messages" },
   { to: "/admin/settings", icon: Settings, label: "Paramètres" },

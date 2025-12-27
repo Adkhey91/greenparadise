@@ -1,91 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft } from "lucide-react";
+import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-import table500 from "@/assets/table-500.png";
-import table1000 from "@/assets/table-1000.png";
-import table1500 from "@/assets/table-1500.png";
-import table3000 from "@/assets/table-3000.png";
-import table5000 from "@/assets/table-5000.png";
-
-const formules = [
-  {
-    id: 1,
-    name: "Formule Essentielle",
-    value: "500da",
-    price: 500,
-    capacity: 4,
-    image: table500,
-    features: ["Jeu"],
-    popular: false,
-    color: "from-emerald-500/20 to-emerald-600/10",
-  },
-  {
-    id: 2,
-    name: "Formule Confort",
-    value: "1000da",
-    price: 1000,
-    capacity: 4,
-    image: table1000,
-    features: ["Jeu", "Barbecue"],
-    popular: false,
-    color: "from-teal-500/20 to-teal-600/10",
-  },
-  {
-    id: 3,
-    name: "Formule Famille",
-    value: "1500da",
-    price: 1500,
-    capacity: 6,
-    image: table1500,
-    features: ["Jeu", "Barbecue", "Balançoire"],
-    popular: true,
-    color: "from-green-500/20 to-green-600/10",
-  },
-  {
-    id: 4,
-    name: "Formule Premium",
-    value: "3000da",
-    price: 3000,
-    capacity: 8,
-    image: table3000,
-    features: ["Jeu", "Balançoire", "Barbecue", "Transat"],
-    popular: false,
-    color: "from-lime-500/20 to-lime-600/10",
-  },
-  {
-    id: 5,
-    name: "Formule VIP",
-    value: "5000da",
-    price: 5000,
-    capacity: 15,
-    image: table5000,
-    features: ["Barbecue", "Jeu"],
-    popular: false,
-    color: "from-yellow-500/20 to-yellow-600/10",
-  },
-];
+interface Formula {
+  id: string;
+  nom: string;
+  description_courte: string | null;
+  prix_dzd: number;
+  nb_personnes: number;
+  tags: string[];
+  actif: boolean;
+  photo_url: string | null;
+}
 
 const getFeatureIcon = (feature: string) => {
-  switch (feature) {
-    case "Jeu":
-      return Gamepad2;
-    case "Barbecue":
-      return Flame;
-    case "Balançoire":
-      return TreePine;
-    case "Transat":
-      return Armchair;
-    default:
-      return Star;
-  }
+  const featureLower = feature.toLowerCase();
+  if (featureLower.includes('jeu') || featureLower.includes('game')) return Gamepad2;
+  if (featureLower.includes('barbecue') || featureLower.includes('grill')) return Flame;
+  if (featureLower.includes('balanc') || featureLower.includes('vert') || featureLower.includes('espace')) return TreePine;
+  if (featureLower.includes('transat') || featureLower.includes('detente')) return Armchair;
+  return Star;
 };
 
-const formuleValues = ["500da", "1000da", "1500da", "3000da", "5000da"] as const;
+const getColorClass = (index: number) => {
+  const colors = [
+    "from-emerald-500/20 to-emerald-600/10",
+    "from-teal-500/20 to-teal-600/10",
+    "from-green-500/20 to-green-600/10",
+    "from-lime-500/20 to-lime-600/10",
+    "from-yellow-500/20 to-yellow-600/10",
+  ];
+  return colors[index % colors.length];
+};
 
 const reservationSchema = z.object({
   nom: z.string().trim().min(2, "Le nom doit contenir au moins 2 caractères").max(100, "Le nom ne peut pas dépasser 100 caractères"),
@@ -97,7 +47,7 @@ const reservationSchema = z.object({
     today.setHours(0, 0, 0, 0);
     return date >= today;
   }, "La date doit être aujourd'hui ou dans le futur"),
-  formule: z.enum(formuleValues, { errorMap: () => ({ message: "Veuillez sélectionner une formule valide" }) }),
+  formule: z.string().min(1, "Veuillez sélectionner une formule"),
   nombrePersonnes: z.string().optional().refine((val) => {
     if (!val) return true;
     const num = parseInt(val);
@@ -108,8 +58,10 @@ const reservationSchema = z.object({
 
 export default function ReservationPage() {
   const { toast } = useToast();
+  const [formulas, setFormulas] = useState<Formula[]>([]);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"formules" | "form">("formules");
-  const [selectedFormule, setSelectedFormule] = useState<typeof formules[0] | null>(null);
+  const [selectedFormule, setSelectedFormule] = useState<Formula | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -122,9 +74,34 @@ export default function ReservationPage() {
     message: "",
   });
 
-  const handleSelectFormule = (formule: typeof formules[0]) => {
+  useEffect(() => {
+    fetchFormulas();
+  }, []);
+
+  const fetchFormulas = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('formulas')
+      .select('*')
+      .eq('actif', true)
+      .order('prix_dzd', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching formulas:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les formules",
+        variant: "destructive",
+      });
+    } else {
+      setFormulas(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleSelectFormule = (formule: Formula) => {
     setSelectedFormule(formule);
-    setFormData({ ...formData, formule: formule.value });
+    setFormData({ ...formData, formule: formule.nom });
     setStep("form");
   };
 
@@ -216,6 +193,20 @@ export default function ReservationPage() {
     );
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <Layout>
+        <section className="py-24 lg:py-32">
+          <div className="container mx-auto container-padding text-center">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
+            <p className="mt-4 text-muted-foreground">Chargement des formules...</p>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
   // Step 1: Choose formule
   if (step === "formules") {
     return (
@@ -235,81 +226,100 @@ export default function ReservationPage() {
         {/* Formules Grid */}
         <section className="py-16 lg:py-24">
           <div className="container mx-auto container-padding">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-              {formules.map((formule, index) => (
-                <div
-                  key={formule.id}
-                  className={`group relative bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${
-                    formule.popular ? "ring-2 ring-primary md:scale-105" : ""
-                  }`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {/* Popular Badge */}
-                  {formule.popular && (
-                    <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold animate-pulse">
-                      Populaire
-                    </div>
-                  )}
-
-                  {/* Image */}
-                  <div className="relative h-56 overflow-hidden">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${formule.color}`} />
-                    <img
-                      src={formule.image}
-                      alt={formule.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-6 space-y-4">
-                    {/* Header */}
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-bold text-foreground">{formule.name}</h3>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        <span className="text-sm">{formule.capacity} personnes</span>
+            {formulas.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Aucune formule disponible pour le moment.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                {formulas.map((formule, index) => (
+                  <div
+                    key={formule.id}
+                    className={`group relative bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${
+                      index === Math.floor(formulas.length / 2) ? "ring-2 ring-primary md:scale-105" : ""
+                    }`}
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {/* Popular Badge for middle item */}
+                    {index === Math.floor(formulas.length / 2) && formulas.length > 2 && (
+                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold animate-pulse">
+                        Populaire
                       </div>
-                    </div>
+                    )}
 
-                    {/* Features */}
-                    <div className="flex flex-wrap gap-2">
-                      {formule.features.map((feature) => {
-                        const Icon = getFeatureIcon(feature);
-                        return (
-                          <span
-                            key={feature}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium text-secondary-foreground"
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                            {feature}
-                          </span>
-                        );
-                      })}
-                    </div>
-
-                    {/* Price */}
-                    <div className="pt-4 border-t border-border">
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <span className="text-3xl font-bold text-primary">{formule.price}</span>
-                          <span className="text-lg text-muted-foreground ml-1">DA</span>
+                    {/* Image */}
+                    <div className="relative h-56 overflow-hidden">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${getColorClass(index)}`} />
+                      {formule.photo_url ? (
+                        <img
+                          src={formule.photo_url}
+                          alt={formule.nom}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20">
+                          <TreePine className="w-16 h-16 text-primary/40" />
                         </div>
-                        <Button 
-                          variant="nature" 
-                          size="sm" 
-                          className="group-hover:scale-105 transition-transform"
-                          onClick={() => handleSelectFormule(formule)}
-                        >
-                          Réserver
-                        </Button>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 space-y-4">
+                      {/* Header */}
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-bold text-foreground">{formule.nom}</h3>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Users className="w-4 h-4" />
+                          <span className="text-sm">{formule.nb_personnes} personnes</span>
+                        </div>
+                        {formule.description_courte && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {formule.description_courte}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Features/Tags */}
+                      {formule.tags && formule.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {formule.tags.map((tag) => {
+                            const Icon = getFeatureIcon(tag);
+                            return (
+                              <span
+                                key={tag}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium text-secondary-foreground"
+                              >
+                                <Icon className="w-3.5 h-3.5" />
+                                {tag}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Price */}
+                      <div className="pt-4 border-t border-border">
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <span className="text-3xl font-bold text-primary">{formule.prix_dzd}</span>
+                            <span className="text-lg text-muted-foreground ml-1">DA</span>
+                          </div>
+                          <Button 
+                            variant="nature" 
+                            size="sm" 
+                            className="group-hover:scale-105 transition-transform"
+                            onClick={() => handleSelectFormule(formule)}
+                          >
+                            Réserver
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -346,10 +356,10 @@ export default function ReservationPage() {
           </button>
           <div className="text-center space-y-6">
             <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
-              Réserver {selectedFormule?.name}
+              Réserver {selectedFormule?.nom}
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              {selectedFormule?.price} DA • {selectedFormule?.capacity} personnes
+              {selectedFormule?.prix_dzd} DA • {selectedFormule?.nb_personnes} personnes
             </p>
           </div>
         </div>
@@ -443,11 +453,13 @@ export default function ReservationPage() {
                 <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-foreground">{selectedFormule?.name}</p>
-                      <p className="text-sm text-muted-foreground">{selectedFormule?.features.join(" • ")}</p>
+                      <p className="font-medium text-foreground">{selectedFormule?.nom}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedFormule?.tags?.join(" • ") || selectedFormule?.description_courte || ""}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-xl font-bold text-primary">{selectedFormule?.price}</span>
+                      <span className="text-xl font-bold text-primary">{selectedFormule?.prix_dzd}</span>
                       <span className="text-muted-foreground ml-1">DA</span>
                     </div>
                   </div>
