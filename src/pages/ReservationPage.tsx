@@ -180,10 +180,18 @@ export default function ReservationPage() {
                 <CheckCircle className="w-10 h-10 text-primary-foreground" />
               </div>
               <h1 className="text-3xl font-bold text-foreground">
-                Demande envoyée !
+                Réservation réussie !
               </h1>
-              <p className="text-muted-foreground">
-                Merci pour votre réservation. Nous vous contacterons très bientôt pour confirmer votre réservation.
+              <div className="bg-primary/10 rounded-2xl p-6 border border-primary/20">
+                <p className="text-lg font-medium text-foreground mb-2">
+                  📞 On va vous contacter dans 5 minutes
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Notre équipe vous appellera pour confirmer votre réservation et répondre à toutes vos questions.
+                </p>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Merci de garder votre téléphone à portée de main.
               </p>
               <Button variant="nature" onClick={handleNewReservation}>
                 Nouvelle réservation

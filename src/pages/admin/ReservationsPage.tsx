@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -41,11 +41,14 @@ import {
   Download,
   Filter,
   Phone,
-  Mail
+  Mail,
+  MessageSquare,
+  CheckCircle,
+  XCircle,
+  Send
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 interface AdminContextData {
   reservations: any[];
@@ -60,24 +63,78 @@ export default function ReservationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formulaFilter, setFormulaFilter] = useState<string>("all");
+  const [sendingSms, setSendingSms] = useState<string | null>(null);
 
-  const updateStatus = async (id: string, statut: string) => {
+  const confirmReservation = async (reservation: any) => {
+    setSendingSms(reservation.id);
+    
+    // Update status to confirmed
     const { error } = await supabase
       .from("reservations")
-      .update({ statut })
+      .update({ statut: "confirmee" })
+      .eq("id", reservation.id);
+
+    if (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de confirmer la réservation",
+        variant: "destructive",
+      });
+      setSendingSms(null);
+      return;
+    }
+
+    // Try to send SMS
+    try {
+      const response = await supabase.functions.invoke('send-sms', {
+        body: {
+          to: reservation.telephone,
+          message: `Votre réservation au parc Green Paradise est confirmée pour le ${format(parseISO(reservation.date_reservation), "dd MMMM yyyy", { locale: fr })}. Formule: ${reservation.formule}. Merci de votre confiance !`,
+          reservationId: reservation.id
+        }
+      });
+
+      if (response.error) {
+        console.warn('SMS not sent:', response.error);
+        toast({
+          title: "Réservation confirmée",
+          description: "SMS non envoyé (service SMS non configuré)",
+        });
+      } else {
+        toast({
+          title: "Réservation confirmée",
+          description: "SMS de confirmation envoyé au client",
+        });
+      }
+    } catch (smsError) {
+      console.warn('SMS service not available:', smsError);
+      toast({
+        title: "Réservation confirmée",
+        description: "Le client sera notifié manuellement",
+      });
+    }
+
+    setSendingSms(null);
+    await refetch();
+  };
+
+  const cancelReservation = async (id: string) => {
+    const { error } = await supabase
+      .from("reservations")
+      .update({ statut: "annulee" })
       .eq("id", id);
 
     if (error) {
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
+        description: "Impossible d'annuler la réservation",
         variant: "destructive",
       });
     } else {
       await refetch();
       toast({
-        title: "Statut mis à jour",
-        description: `Réservation marquée comme "${statut}"`,
+        title: "Réservation annulée",
+        description: "Le statut a été mis à jour",
       });
     }
   };
@@ -132,25 +189,29 @@ export default function ReservationsPage() {
     return matchesSearch && matchesStatus && matchesFormula;
   });
 
+  const pendingCount = reservations.filter(r => !r.statut || r.statut === "en_attente").length;
+  const confirmedCount = reservations.filter(r => r.statut === "confirmee").length;
+  const cancelledCount = reservations.filter(r => r.statut === "annulee").length;
+
   const getStatusBadge = (statut: string | null) => {
     switch (statut) {
       case "confirmee":
         return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-200 hover:bg-green-500/20">
+          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-200">
             <Check className="w-3 h-3 mr-1" />
             Confirmée
           </Badge>
         );
       case "annulee":
         return (
-          <Badge className="bg-red-500/10 text-red-700 border-red-200 hover:bg-red-500/20">
+          <Badge className="bg-red-500/10 text-red-700 border-red-200">
             <X className="w-3 h-3 mr-1" />
             Annulée
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-200 hover:bg-yellow-500/20">
+          <Badge className="bg-amber-500/10 text-amber-700 border-amber-200">
             <Clock className="w-3 h-3 mr-1" />
             En attente
           </Badge>
@@ -165,13 +226,35 @@ export default function ReservationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Réservations</h1>
           <p className="text-muted-foreground">
-            {filteredReservations.length} réservation(s) trouvée(s)
+            Gérez les demandes de réservation
           </p>
         </div>
         <Button onClick={exportCSV} variant="outline" className="gap-2">
           <Download className="h-4 w-4" />
           Exporter CSV
         </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
+            <p className="text-sm text-muted-foreground">En attente</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-emerald-600">{confirmedCount}</p>
+            <p className="text-sm text-muted-foreground">Confirmées</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-red-600">{cancelledCount}</p>
+            <p className="text-sm text-muted-foreground">Annulées</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -252,6 +335,12 @@ export default function ReservationsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">{res.nom}</span>
+                        {res.message && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <MessageSquare className="w-3 h-3" />
+                            <span className="truncate max-w-32">{res.message}</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -282,65 +371,72 @@ export default function ReservationsPage() {
                         <span className="font-medium">{res.nombre_personnes || "-"}</span>
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={res.statut || "en_attente"}
-                          onValueChange={(value) => updateStatus(res.id, value)}
-                        >
-                          <SelectTrigger className="w-36 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="en_attente">
-                              <span className="flex items-center gap-2">
-                                <Clock className="h-3 w-3 text-yellow-600" />
-                                En attente
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="confirmee">
-                              <span className="flex items-center gap-2">
-                                <Check className="h-3 w-3 text-green-600" />
-                                Confirmée
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="annulee">
-                              <span className="flex items-center gap-2">
-                                <X className="h-3 w-3 text-red-600" />
-                                Annulée
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {getStatusBadge(res.statut)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Confirm button */}
+                          {(!res.statut || res.statut === "en_attente") && (
                             <Button
+                              size="sm"
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => confirmReservation(res)}
+                              disabled={sendingSms === res.id}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {sendingSms === res.id ? (
+                                <Send className="h-3 w-3 animate-pulse" />
+                              ) : (
+                                <CheckCircle className="h-3 w-3" />
+                              )}
+                              Confirmer
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Supprimer la réservation ?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Cette action est irréversible. La réservation de {res.nom} sera
-                                définitivement supprimée.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteReservation(res.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          )}
+
+                          {/* Cancel button */}
+                          {(!res.statut || res.statut === "en_attente") && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => cancelReservation(res.id)}
+                            >
+                              <XCircle className="h-3 w-3" />
+                              Annuler
+                            </Button>
+                          )}
+
+                          {/* Delete button */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer la réservation ?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Cette action est irréversible. La réservation de {res.nom} sera
+                                  définitivement supprimée.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteReservation(res.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Supprimer
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
