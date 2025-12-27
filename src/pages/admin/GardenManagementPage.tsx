@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,19 +30,14 @@ import {
   Plus, 
   Pencil, 
   Trash2, 
-  Image as ImageIcon, 
   Upload,
-  Table as TableIcon,
-  Users,
-  Check,
-  X,
-  Clock,
-  Wrench,
+  LayoutGrid,
+  List,
+  Lock,
+  LockOpen,
+  ImageIcon,
   RefreshCw,
-  Sparkles,
-  Crown,
-  Layers,
-  TreePine
+  Users
 } from "lucide-react";
 
 interface Formula {
@@ -70,60 +64,40 @@ interface ParkTable {
   updated_at: string;
 }
 
-const AVAILABLE_TAGS = ['wifi', 'jeu', 'espace-vert', 'piscine', 'ombre', 'vue', 'familial', 'romantique', 'groupe'];
-
-const STATUS_CONFIG = {
-  libre: { label: 'Libre', color: 'bg-emerald-500', textColor: 'text-emerald-600', bgLight: 'bg-emerald-50', icon: Check },
-  occupee: { label: 'Occupée', color: 'bg-rose-500', textColor: 'text-rose-600', bgLight: 'bg-rose-50', icon: X },
-  reservee: { label: 'Réservée', color: 'bg-amber-500', textColor: 'text-amber-600', bgLight: 'bg-amber-50', icon: Clock },
-  hors_service: { label: 'H.S.', color: 'bg-slate-400', textColor: 'text-slate-600', bgLight: 'bg-slate-50', icon: Wrench },
-};
+const AVAILABLE_TAGS = ['Table de jardin', 'Accès espace vert', 'Parasol inclus', 'Table', 'Chaises', 'wifi', 'jeu', 'piscine', 'ombre', 'vue'];
 
 export default function GardenManagementPage() {
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [tables, setTables] = useState<ParkTable[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFormula, setSelectedFormula] = useState<Formula | null>(null);
+  const [activeTab, setActiveTab] = useState<'formulas' | 'tables'>('formulas');
   
-  // Formula form state
+  // Formula dialog
   const [formulaDialogOpen, setFormulaDialogOpen] = useState(false);
   const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
   const [formulaForm, setFormulaForm] = useState({
     nom: '',
     description_courte: '',
     prix_dzd: 0,
-    nb_personnes: 1,
+    nb_personnes: 4,
     tags: [] as string[],
     actif: true,
     photo_url: '',
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Table form state
+  // Table dialog
   const [tableDialogOpen, setTableDialogOpen] = useState(false);
-  const [bulkTableDialogOpen, setBulkTableDialogOpen] = useState(false);
-  const [editingTable, setEditingTable] = useState<ParkTable | null>(null);
-  const [tableForm, setTableForm] = useState({
-    nom_ou_numero: '',
-    capacite: 4,
-  });
-  const [bulkTableForm, setBulkTableForm] = useState({
-    prefix: 'Table',
-    start: 1,
-    count: 5,
-    capacite: 4,
-  });
+  const [addingTablesForFormula, setAddingTablesForFormula] = useState<Formula | null>(null);
+  const [tableCount, setTableCount] = useState(1);
 
   useEffect(() => {
     fetchData();
     
     const channel = supabase
-      .channel('park-tables-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'park_tables' },
-        () => fetchTables()
-      )
+      .channel('garden-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'park_tables' }, () => fetchTables())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'formulas' }, () => fetchFormulas())
       .subscribe();
 
     return () => {
@@ -138,30 +112,14 @@ export default function GardenManagementPage() {
   };
 
   const fetchFormulas = async () => {
-    const { data, error } = await supabase
-      .from('formulas')
-      .select('*')
-      .order('prix_dzd', { ascending: true });
-    
-    if (error) {
-      toast.error('Erreur lors du chargement des formules');
-      console.error(error);
-      return;
-    }
+    const { data, error } = await supabase.from('formulas').select('*').order('prix_dzd', { ascending: true });
+    if (error) { toast.error('Erreur chargement formules'); return; }
     setFormulas(data || []);
   };
 
   const fetchTables = async () => {
-    const { data, error } = await supabase
-      .from('park_tables')
-      .select('*')
-      .order('nom_ou_numero', { ascending: true });
-    
-    if (error) {
-      toast.error('Erreur lors du chargement des tables');
-      console.error(error);
-      return;
-    }
+    const { data, error } = await supabase.from('park_tables').select('*').order('nom_ou_numero', { ascending: true });
+    if (error) { toast.error('Erreur chargement tables'); return; }
     setTables((data || []) as ParkTable[]);
   };
 
@@ -179,15 +137,7 @@ export default function GardenManagementPage() {
       });
     } else {
       setEditingFormula(null);
-      setFormulaForm({
-        nom: '',
-        description_courte: '',
-        prix_dzd: 0,
-        nb_personnes: 1,
-        tags: [],
-        actif: true,
-        photo_url: '',
-      });
+      setFormulaForm({ nom: '', description_courte: '', prix_dzd: 0, nb_personnes: 4, tags: [], actif: true, photo_url: '' });
     }
     setFormulaDialogOpen(true);
   };
@@ -195,51 +145,27 @@ export default function GardenManagementPage() {
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Format non supporté. Utilisez JPG, PNG ou WebP.');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Format non supporté');
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Le fichier est trop volumineux (max 5 Mo)');
+      toast.error('Fichier trop volumineux (max 5 Mo)');
       return;
     }
-
     setUploadingPhoto(true);
     const filename = `${Date.now()}-${file.name}`;
-    
-    const { data, error } = await supabase.storage
-      .from('formula-photos')
-      .upload(filename, file);
-
-    if (error) {
-      toast.error('Erreur lors du téléversement de la photo');
-      console.error(error);
-      setUploadingPhoto(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('formula-photos')
-      .getPublicUrl(filename);
-
-    setFormulaForm(prev => ({
-      ...prev,
-      photo_url: urlData.publicUrl,
-    }));
+    const { error } = await supabase.storage.from('formula-photos').upload(filename, file);
+    if (error) { toast.error('Erreur téléversement'); setUploadingPhoto(false); return; }
+    const { data: urlData } = supabase.storage.from('formula-photos').getPublicUrl(filename);
+    setFormulaForm(prev => ({ ...prev, photo_url: urlData.publicUrl }));
     setUploadingPhoto(false);
-    toast.success('Photo téléversée avec succès');
+    toast.success('Photo téléversée');
   };
 
   const saveFormula = async () => {
-    if (!formulaForm.nom.trim()) {
-      toast.error('Le nom de la formule est requis');
-      return;
-    }
-
-    const formulaData = {
+    if (!formulaForm.nom.trim()) { toast.error('Nom requis'); return; }
+    const data = {
       nom: formulaForm.nom.trim(),
       description_courte: formulaForm.description_courte.trim() || null,
       prix_dzd: formulaForm.prix_dzd,
@@ -249,664 +175,465 @@ export default function GardenManagementPage() {
       photo_url: formulaForm.photo_url.trim() || null,
       photo_filename: formulaForm.photo_url ? formulaForm.photo_url.split('/').pop() : null,
     };
-
     if (editingFormula) {
-      const { error } = await supabase
-        .from('formulas')
-        .update(formulaData)
-        .eq('id', editingFormula.id);
-
-      if (error) {
-        toast.error('Erreur lors de la modification');
-        console.error(error);
-        return;
-      }
-      toast.success('Formule modifiée avec succès');
+      const { error } = await supabase.from('formulas').update(data).eq('id', editingFormula.id);
+      if (error) { toast.error('Erreur modification'); return; }
+      toast.success('Formule modifiée');
     } else {
-      const { error } = await supabase
-        .from('formulas')
-        .insert([formulaData]);
-
-      if (error) {
-        toast.error('Erreur lors de la création');
-        console.error(error);
-        return;
-      }
-      toast.success('Formule créée avec succès');
+      const { error } = await supabase.from('formulas').insert([data]);
+      if (error) { toast.error('Erreur création'); return; }
+      toast.success('Formule créée');
     }
-
     setFormulaDialogOpen(false);
     fetchFormulas();
   };
 
   const deleteFormula = async (id: string) => {
-    const { error } = await supabase
-      .from('formulas')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast.error('Erreur lors de la suppression');
-      console.error(error);
-      return;
-    }
-    toast.success('Formule supprimée avec succès');
-    if (selectedFormula?.id === id) {
-      setSelectedFormula(null);
-    }
+    const { error } = await supabase.from('formulas').delete().eq('id', id);
+    if (error) { toast.error('Erreur suppression'); return; }
+    toast.success('Formule supprimée');
     fetchFormulas();
   };
 
   const toggleTag = (tag: string) => {
     setFormulaForm(prev => ({
       ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter(t => t !== tag)
-        : [...prev.tags, tag],
+      tags: prev.tags.includes(tag) ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag],
     }));
   };
 
-  const openTableDialog = (table?: ParkTable) => {
-    if (table) {
-      setEditingTable(table);
-      setTableForm({
-        nom_ou_numero: table.nom_ou_numero,
-        capacite: table.capacite,
-      });
-    } else {
-      setEditingTable(null);
-      setTableForm({
-        nom_ou_numero: '',
-        capacite: 4,
-      });
-    }
+  const openAddTablesDialog = (formula: Formula) => {
+    setAddingTablesForFormula(formula);
+    const existingTables = tables.filter(t => t.formule_id === formula.id);
+    setTableCount(existingTables.length > 0 ? 1 : 5);
     setTableDialogOpen(true);
   };
 
-  const saveTable = async () => {
-    if (!selectedFormula) {
-      toast.error('Sélectionnez d\'abord une formule');
-      return;
+  const addTables = async () => {
+    if (!addingTablesForFormula) return;
+    const existingTables = tables.filter(t => t.formule_id === addingTablesForFormula.id);
+    const startNum = existingTables.length + 1;
+    const newTables = [];
+    for (let i = 0; i < tableCount; i++) {
+      newTables.push({
+        formule_id: addingTablesForFormula.id,
+        nom_ou_numero: `Table n°${startNum + i}`,
+        capacite: addingTablesForFormula.nb_personnes,
+        statut: 'libre',
+      });
     }
-
-    if (!tableForm.nom_ou_numero.trim()) {
-      toast.error('Le nom/numéro de la table est requis');
-      return;
-    }
-
-    const tableData = {
-      formule_id: selectedFormula.id,
-      nom_ou_numero: tableForm.nom_ou_numero.trim(),
-      capacite: tableForm.capacite,
-    };
-
-    if (editingTable) {
-      const { error } = await supabase
-        .from('park_tables')
-        .update(tableData)
-        .eq('id', editingTable.id);
-
-      if (error) {
-        toast.error('Erreur lors de la modification');
-        console.error(error);
-        return;
-      }
-      toast.success('Table modifiée avec succès');
-    } else {
-      const { error } = await supabase
-        .from('park_tables')
-        .insert([{ ...tableData, statut: 'libre' }]);
-
-      if (error) {
-        toast.error('Erreur lors de la création');
-        console.error(error);
-        return;
-      }
-      toast.success('Table créée avec succès');
-    }
-
+    const { error } = await supabase.from('park_tables').insert(newTables);
+    if (error) { toast.error('Erreur ajout tables'); return; }
+    toast.success(`${tableCount} table(s) ajoutée(s)`);
     setTableDialogOpen(false);
     fetchTables();
   };
 
-  const addBulkTables = async () => {
-    if (!selectedFormula) {
-      toast.error('Sélectionnez d\'abord une formule');
-      return;
-    }
-
-    const tablesToInsert = [];
-    for (let i = 0; i < bulkTableForm.count; i++) {
-      tablesToInsert.push({
-        formule_id: selectedFormula.id,
-        nom_ou_numero: `${bulkTableForm.prefix} n°${bulkTableForm.start + i}`,
-        capacite: bulkTableForm.capacite,
-        statut: 'libre',
-      });
-    }
-
-    const { error } = await supabase
-      .from('park_tables')
-      .insert(tablesToInsert);
-
-    if (error) {
-      toast.error('Erreur lors de la création des tables');
-      console.error(error);
-      return;
-    }
-
-    toast.success(`${bulkTableForm.count} tables créées avec succès`);
-    setBulkTableDialogOpen(false);
-    fetchTables();
-  };
-
   const updateTableStatus = async (tableId: string, newStatus: ParkTable['statut']) => {
-    const { error } = await supabase
-      .from('park_tables')
-      .update({ statut: newStatus })
-      .eq('id', tableId);
-
-    if (error) {
-      toast.error('Erreur lors de la mise à jour du statut');
-      console.error(error);
-      return;
-    }
-    toast.success('Statut mis à jour');
+    const { error } = await supabase.from('park_tables').update({ statut: newStatus }).eq('id', tableId);
+    if (error) { toast.error('Erreur mise à jour'); return; }
   };
 
   const deleteTable = async (id: string) => {
-    const { error } = await supabase
-      .from('park_tables')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast.error('Erreur lors de la suppression');
-      console.error(error);
-      return;
-    }
+    const { error } = await supabase.from('park_tables').delete().eq('id', id);
+    if (error) { toast.error('Erreur suppression'); return; }
     toast.success('Table supprimée');
-    fetchTables();
   };
 
-  const selectedFormulaTables = selectedFormula
-    ? tables.filter(t => t.formule_id === selectedFormula.id)
-    : [];
-
-  const getTableCounts = (formulaId: string) => {
-    const formulaTables = tables.filter(t => t.formule_id === formulaId);
+  const getTableStats = (formulaId: string) => {
+    const fTables = tables.filter(t => t.formule_id === formulaId);
     return {
-      total: formulaTables.length,
-      libre: formulaTables.filter(t => t.statut === 'libre').length,
-      occupee: formulaTables.filter(t => t.statut === 'occupee').length,
-      reservee: formulaTables.filter(t => t.statut === 'reservee').length,
-      hors_service: formulaTables.filter(t => t.statut === 'hors_service').length,
+      total: fTables.length,
+      libre: fTables.filter(t => t.statut === 'libre').length,
+      occupee: fTables.filter(t => t.statut === 'occupee').length,
+      reservee: fTables.filter(t => t.statut === 'reservee').length,
     };
+  };
+
+  const getStatusLabel = (statut: string) => {
+    switch (statut) {
+      case 'libre': return 'Libre';
+      case 'occupee': return 'Présentiel';
+      case 'reservee': return 'Réservée';
+      case 'hors_service': return 'H.S.';
+      default: return statut;
+    }
+  };
+
+  const getStatusColor = (statut: string) => {
+    switch (statut) {
+      case 'libre': return 'text-emerald-600';
+      case 'occupee': return 'text-amber-600';
+      case 'reservee': return 'text-rose-600';
+      case 'hors_service': return 'text-slate-500';
+      default: return '';
+    }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center space-y-4">
-          <RefreshCw className="w-10 h-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Chargement...</p>
-        </div>
+        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 p-8 text-white">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-              <TreePine className="w-6 h-6" />
-            </div>
-            <h1 className="text-3xl font-bold">Gestion du Jardin</h1>
-          </div>
-          <p className="text-white/80 text-lg">
-            Gérez vos formules et tables de jardin en temps réel
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Gestion du Jardin</h1>
+          <p className="text-muted-foreground">
+            Gérez vos formules et tables • {formulas.length} formules • {tables.length} tables
           </p>
-          <div className="flex items-center gap-6 mt-6">
-            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-              <Layers className="w-5 h-5" />
-              <span className="font-semibold">{formulas.length}</span>
-              <span className="text-white/80">Formules</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-              <TableIcon className="w-5 h-5" />
-              <span className="font-semibold">{tables.length}</span>
-              <span className="text-white/80">Tables</span>
-            </div>
-          </div>
         </div>
+        <Button onClick={() => openFormulaDialog()} className="gap-2 bg-primary hover:bg-primary/90">
+          <Plus className="w-4 h-4" />
+          Nouvelle formule
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Formulas list */}
-        <div className="xl:col-span-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              Formules
-            </h2>
-            <Button onClick={() => openFormulaDialog()} size="sm" className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
-              <Plus className="w-4 h-4" />
-              Nouvelle
-            </Button>
-          </div>
-          
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'formulas' | 'tables')}>
+        <TabsList className="bg-muted/50">
+          <TabsTrigger value="formulas" className="gap-2">
+            <LayoutGrid className="w-4 h-4" />
+            Formules
+          </TabsTrigger>
+          <TabsTrigger value="tables" className="gap-2">
+            <List className="w-4 h-4" />
+            Tableau des tables
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Formulas Tab */}
+        <TabsContent value="formulas" className="mt-6">
           {formulas.length === 0 ? (
-            <Card className="p-8 text-center border-dashed border-2">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Layers className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <p className="text-muted-foreground font-medium">Aucune formule</p>
-              <p className="text-sm text-muted-foreground mt-1">Créez votre première formule</p>
+            <Card className="p-12 text-center border-dashed">
+              <p className="text-muted-foreground">Aucune formule. Créez-en une !</p>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {formulas.map((formula, index) => {
-                const counts = getTableCounts(formula.id);
-                const isSelected = selectedFormula?.id === formula.id;
-                const isPremium = formula.prix_dzd >= 3000;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {formulas.map(formula => {
+                const stats = getTableStats(formula.id);
+                const formulaTables = tables.filter(t => t.formule_id === formula.id);
                 
                 return (
-                  <Card 
-                    key={formula.id}
-                    className={`cursor-pointer transition-all duration-300 hover:shadow-lg group overflow-hidden ${
-                      isSelected 
-                        ? 'ring-2 ring-primary shadow-lg shadow-primary/20' 
-                        : 'hover:-translate-y-0.5'
-                    } ${!formula.actif ? 'opacity-60' : ''}`}
-                    onClick={() => setSelectedFormula(formula)}
-                  >
-                    <div className="relative">
-                      {/* Photo header */}
-                      <div className="relative h-32 overflow-hidden">
-                        {formula.photo_url ? (
-                          <img 
-                            src={formula.photo_url} 
-                            alt={formula.nom}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-green-200 dark:from-emerald-900 dark:to-green-800 flex items-center justify-center">
-                            <ImageIcon className="w-12 h-12 text-emerald-400" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                        
-                        {/* Price badge */}
-                        <div className="absolute top-3 right-3">
-                          <Badge className={`text-sm font-bold shadow-lg ${
-                            isPremium 
-                              ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0' 
-                              : 'bg-white/90 text-emerald-700 border-0'
-                          }`}>
-                            {formula.prix_dzd.toLocaleString()} DZD
-                          </Badge>
+                  <Card key={formula.id} className="overflow-hidden">
+                    {/* Photo */}
+                    <div className="relative h-40 bg-muted">
+                      {formula.photo_url ? (
+                        <img src={formula.photo_url} alt={formula.nom} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <span className="text-lg">Aucune photo</span>
                         </div>
-                        
-                        {/* Status badges */}
-                        <div className="absolute top-3 left-3 flex gap-2">
-                          {!formula.actif && (
-                            <Badge variant="secondary" className="bg-slate-900/80 text-white border-0">
-                              Inactif
+                      )}
+                      <div className="absolute top-3 right-3">
+                        <Badge variant="secondary" className="bg-white/90 text-foreground">
+                          {formula.nb_personnes} pers.
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <CardContent className="p-4 space-y-4">
+                      {/* Info */}
+                      <div>
+                        <h3 className="font-semibold text-foreground">{formula.nom}</h3>
+                        <p className="text-lg font-bold text-primary">
+                          {formula.prix_dzd.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">DA</span>
+                        </p>
+                      </div>
+
+                      {/* Tags */}
+                      {formula.tags && formula.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {formula.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                              {tag}
                             </Badge>
-                          )}
-                          {isPremium && (
-                            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 gap-1">
-                              <Crown className="w-3 h-3" />
-                              Premium
-                            </Badge>
-                          )}
+                          ))}
                         </div>
-                        
-                        {/* Title overlay */}
-                        <div className="absolute bottom-3 left-3 right-3">
-                          <h3 className="font-bold text-white text-lg truncate drop-shadow-lg">
-                            {formula.nom}
-                          </h3>
-                          <p className="text-white/80 text-sm flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5" />
-                            {formula.nb_personnes} personnes
-                          </p>
+                      )}
+
+                      {/* Stats bar */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg py-2">
+                          <p className="text-xl font-bold text-emerald-600">{stats.libre}</p>
+                          <p className="text-xs text-muted-foreground">Libres</p>
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg py-2">
+                          <p className="text-xl font-bold text-amber-600">{stats.occupee}</p>
+                          <p className="text-xs text-muted-foreground">Occupées</p>
+                        </div>
+                        <div className="bg-rose-50 dark:bg-rose-900/20 rounded-lg py-2">
+                          <p className="text-xl font-bold text-rose-600">{stats.reservee}</p>
+                          <p className="text-xs text-muted-foreground">Réservées</p>
                         </div>
                       </div>
-                      
-                      {/* Content */}
-                      <CardContent className="p-4">
-                        {/* Table status indicators */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                              <span className="text-sm font-medium">{counts.libre}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                              <span className="text-sm font-medium">{counts.reservee}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                              <span className="text-sm font-medium">{counts.occupee}</span>
-                            </div>
+
+                      {/* Tables list */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Tables ({stats.total})</p>
+                        {formulaTables.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">Aucune table</p>
+                        ) : (
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {formulaTables.map(table => (
+                              <div key={table.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{table.nom_ou_numero}</span>
+                                  <span className={`text-xs ${getStatusColor(table.statut)}`}>
+                                    {getStatusLabel(table.statut)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {table.statut === 'libre' ? (
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-7 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      onClick={() => updateTableStatus(table.id, 'occupee')}
+                                    >
+                                      <Lock className="w-3 h-3" />
+                                      Occuper
+                                    </Button>
+                                  ) : (
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                      onClick={() => updateTableStatus(table.id, 'libre')}
+                                    >
+                                      <LockOpen className="w-3 h-3" />
+                                      Libérer
+                                    </Button>
+                                  )}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Supprimer cette table ?</AlertDialogTitle>
+                                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteTable(table.id)} className="bg-destructive">
+                                          Supprimer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                            {counts.total} table{counts.total > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="flex-1 gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openFormulaDialog(formula);
-                            }}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Modifier
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer cette formule ?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Toutes les tables associées seront également supprimées. Cette action est irréversible.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteFormula(formula.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
-                                >
-                                  Supprimer
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </CardContent>
-                    </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 gap-2"
+                          onClick={() => openFormulaDialog(formula)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Modifier
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer "{formula.nom}" ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Toutes les tables associées seront supprimées.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteFormula(formula.id)} className="bg-destructive">
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+
+                      <Button 
+                        className="w-full gap-2 bg-emerald-500 hover:bg-emerald-600"
+                        onClick={() => openAddTablesDialog(formula)}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter tables
+                      </Button>
+                    </CardContent>
                   </Card>
                 );
               })}
             </div>
           )}
-        </div>
+        </TabsContent>
 
-        {/* Tables management */}
-        <div className="xl:col-span-8">
-          {selectedFormula ? (
-            <Card className="overflow-hidden border-0 shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-b">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    {selectedFormula.photo_url && (
-                      <img 
-                        src={selectedFormula.photo_url}
-                        alt={selectedFormula.nom}
-                        className="w-14 h-14 rounded-xl object-cover shadow-md"
-                      />
-                    )}
-                    <div>
-                      <CardTitle className="text-xl flex items-center gap-2">
-                        {selectedFormula.nom}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {selectedFormulaTables.length} table{selectedFormulaTables.length > 1 ? 's' : ''} • {selectedFormula.prix_dzd.toLocaleString()} DZD
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setBulkTableDialogOpen(true)}
-                      className="gap-2"
-                    >
-                      <Layers className="w-4 h-4" />
-                      Lot
-                    </Button>
-                    <Button 
-                      size="sm"
-                      onClick={() => openTableDialog()}
-                      className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Table
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {selectedFormulaTables.length === 0 ? (
-                  <div className="text-center py-16">
-                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                      <TableIcon className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                    <p className="text-lg font-medium text-muted-foreground">Aucune table</p>
-                    <p className="text-sm text-muted-foreground mt-1">Ajoutez des tables pour cette formule</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {selectedFormulaTables.map(table => {
-                      const status = STATUS_CONFIG[table.statut];
-                      const StatusIcon = status.icon;
-                      
-                      return (
-                        <div 
-                          key={table.id}
-                          className={`relative rounded-2xl border-2 transition-all duration-300 hover:shadow-lg overflow-hidden ${status.bgLight} border-transparent hover:border-primary/30`}
-                        >
-                          {/* Status indicator bar */}
-                          <div className={`h-1 ${status.color}`} />
-                          
-                          <div className="p-4">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h4 className="font-bold text-foreground">{table.nom_ou_numero}</h4>
-                                <div className="flex items-center gap-1 text-muted-foreground mt-1">
-                                  <Users className="w-3.5 h-3.5" />
-                                  <span className="text-xs">{table.capacite} pers.</span>
-                                </div>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost"
-                                  className="h-7 w-7 rounded-full"
-                                  onClick={() => openTableDialog(table)}
-                                >
-                                  <Pencil className="w-3 h-3" />
+        {/* Tables Tab */}
+        <TabsContent value="tables" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-medium">Table</th>
+                    <th className="text-left p-4 font-medium">Formule</th>
+                    <th className="text-left p-4 font-medium">Capacité</th>
+                    <th className="text-left p-4 font-medium">Statut</th>
+                    <th className="text-right p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tables.map(table => {
+                    const formula = formulas.find(f => f.id === table.formule_id);
+                    return (
+                      <tr key={table.id} className="border-t">
+                        <td className="p-4 font-medium">{table.nom_ou_numero}</td>
+                        <td className="p-4 text-muted-foreground">{formula?.nom || '-'}</td>
+                        <td className="p-4">{table.capacite} pers.</td>
+                        <td className="p-4">
+                          <Badge 
+                            variant="secondary" 
+                            className={`${
+                              table.statut === 'libre' ? 'bg-emerald-100 text-emerald-700' :
+                              table.statut === 'occupee' ? 'bg-amber-100 text-amber-700' :
+                              table.statut === 'reservee' ? 'bg-rose-100 text-rose-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {getStatusLabel(table.statut)}
+                          </Badge>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex justify-end gap-1">
+                            {table.statut === 'libre' ? (
+                              <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'occupee')}>
+                                Occuper
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'libre')}>
+                                Libérer
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'reservee')}>
+                              Réserver
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="icon" variant="ghost" className="text-destructive">
+                                  <Trash2 className="w-4 h-4" />
                                 </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost"
-                                      className="h-7 w-7 rounded-full text-destructive hover:text-destructive"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Supprimer cette table ?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Cette action est irréversible.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                      <AlertDialogAction 
-                                        onClick={() => deleteTable(table.id)}
-                                        className="bg-destructive hover:bg-destructive/90"
-                                      >
-                                        Supprimer
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </div>
-                            
-                            {/* Status badge */}
-                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${status.bgLight} ${status.textColor} mb-3`}>
-                              <StatusIcon className="w-3 h-3" />
-                              {status.label}
-                            </div>
-
-                            {/* Quick actions */}
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {table.statut !== 'libre' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  className="h-8 text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400"
-                                  onClick={() => updateTableStatus(table.id, 'libre')}
-                                >
-                                  <Check className="w-3 h-3 mr-1" />
-                                  Libre
-                                </Button>
-                              )}
-                              {table.statut !== 'occupee' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  className="h-8 text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-400"
-                                  onClick={() => updateTableStatus(table.id, 'occupee')}
-                                >
-                                  <X className="w-3 h-3 mr-1" />
-                                  Occupée
-                                </Button>
-                              )}
-                              {table.statut !== 'reservee' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  className="h-8 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400"
-                                  onClick={() => updateTableStatus(table.id, 'reservee')}
-                                >
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Réservée
-                                </Button>
-                              )}
-                              {table.statut !== 'hors_service' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  className="h-8 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400"
-                                  onClick={() => updateTableStatus(table.id, 'hors_service')}
-                                >
-                                  <Wrench className="w-3 h-3 mr-1" />
-                                  H.S.
-                                </Button>
-                              )}
-                            </div>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Supprimer ?</AlertDialogTitle>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteTable(table.id)} className="bg-destructive">
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="h-full flex items-center justify-center min-h-[500px] border-dashed border-2">
-              <div className="text-center p-8">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-100 to-green-200 dark:from-emerald-900 dark:to-green-800 flex items-center justify-center mx-auto mb-6">
-                  <TableIcon className="w-12 h-12 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <p className="text-xl font-medium text-muted-foreground">Sélectionnez une formule</p>
-                <p className="text-sm text-muted-foreground mt-2">pour gérer ses tables</p>
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {tables.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        Aucune table
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Formula Dialog */}
       <Dialog open={formulaDialogOpen} onOpenChange={setFormulaDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {editingFormula ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-              {editingFormula ? 'Modifier la formule' : 'Nouvelle formule'}
-            </DialogTitle>
-            <DialogDescription>
-              Remplissez les informations de la formule
-            </DialogDescription>
+            <DialogTitle>{editingFormula ? 'Modifier' : 'Nouvelle'} formule</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-5">
+          <div className="space-y-4">
+            {/* Photo */}
             <div className="space-y-2">
-              <Label htmlFor="nom">Nom *</Label>
-              <Input
-                id="nom"
-                value={formulaForm.nom}
-                onChange={(e) => setFormulaForm(prev => ({ ...prev, nom: e.target.value }))}
-                placeholder="Ex: Table Premium VIP"
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description courte</Label>
-              <Textarea
-                id="description"
-                value={formulaForm.description_courte}
-                onChange={(e) => setFormulaForm(prev => ({ ...prev, description_courte: e.target.value }))}
-                placeholder="Une description attrayante..."
-                rows={2}
-              />
+              <Label>Photo</Label>
+              <div className="relative h-32 bg-muted rounded-lg overflow-hidden">
+                {formulaForm.photo_url ? (
+                  <img src={formulaForm.photo_url} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                )}
+                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-white/20 backdrop-blur rounded-lg text-white text-sm">
+                    <Upload className="w-4 h-4" />
+                    {uploadingPhoto ? 'Envoi...' : 'Changer'}
+                  </div>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
+                </label>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="prix">Prix (DZD)</Label>
-                <Input
-                  id="prix"
-                  type="number"
-                  min="0"
-                  value={formulaForm.prix_dzd}
-                  onChange={(e) => setFormulaForm(prev => ({ ...prev, prix_dzd: parseInt(e.target.value) || 0 }))}
-                  className="h-11"
+                <Label>Nom *</Label>
+                <Input 
+                  value={formulaForm.nom} 
+                  onChange={(e) => setFormulaForm(p => ({ ...p, nom: e.target.value }))}
+                  placeholder="Essentielle"
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="personnes">Nombre de personnes</Label>
-                <Input
-                  id="personnes"
+                <Label>Prix (DA)</Label>
+                <Input 
                   type="number"
-                  min="1"
-                  value={formulaForm.nb_personnes}
-                  onChange={(e) => setFormulaForm(prev => ({ ...prev, nb_personnes: parseInt(e.target.value) || 1 }))}
-                  className="h-11"
+                  value={formulaForm.prix_dzd} 
+                  onChange={(e) => setFormulaForm(p => ({ ...p, prix_dzd: parseInt(e.target.value) || 0 }))}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nombre de personnes</Label>
+              <Input 
+                type="number"
+                value={formulaForm.nb_personnes} 
+                onChange={(e) => setFormulaForm(p => ({ ...p, nb_personnes: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea 
+                value={formulaForm.description_courte} 
+                onChange={(e) => setFormulaForm(p => ({ ...p, description_courte: e.target.value }))}
+                rows={2}
+              />
             </div>
 
             <div className="space-y-2">
@@ -916,7 +643,7 @@ export default function GardenManagementPage() {
                   <Badge
                     key={tag}
                     variant={formulaForm.tags.includes(tag) ? 'default' : 'outline'}
-                    className="cursor-pointer transition-all hover:scale-105"
+                    className="cursor-pointer"
                     onClick={() => toggleTag(tag)}
                   >
                     {tag}
@@ -924,191 +651,39 @@ export default function GardenManagementPage() {
                 ))}
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>Photo</Label>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={formulaForm.photo_url}
-                    onChange={(e) => setFormulaForm(prev => ({ ...prev, photo_url: e.target.value }))}
-                    placeholder="URL de l'image"
-                    className="flex-1 h-11"
-                  />
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handlePhotoUpload}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      disabled={uploadingPhoto}
-                    />
-                    <Button variant="outline" disabled={uploadingPhoto} size="icon" className="h-11 w-11">
-                      {uploadingPhoto ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                {formulaForm.photo_url && (
-                  <img 
-                    src={formulaForm.photo_url} 
-                    alt="Preview"
-                    className="w-full h-40 object-cover rounded-xl"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-muted">
-              <Switch
-                id="actif"
-                checked={formulaForm.actif}
-                onCheckedChange={(checked) => setFormulaForm(prev => ({ ...prev, actif: checked }))}
-              />
-              <Label htmlFor="actif" className="cursor-pointer">Formule active (visible sur le site)</Label>
-            </div>
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setFormulaDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={saveFormula} className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
-              {editingFormula ? 'Modifier' : 'Créer'}
-            </Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormulaDialogOpen(false)}>Annuler</Button>
+            <Button onClick={saveFormula}>{editingFormula ? 'Enregistrer' : 'Créer'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Table Dialog */}
+      {/* Add Tables Dialog */}
       <Dialog open={tableDialogOpen} onOpenChange={setTableDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <TableIcon className="w-5 h-5" />
-              {editingTable ? 'Modifier la table' : 'Nouvelle table'}
-            </DialogTitle>
+            <DialogTitle>Ajouter des tables à "{addingTablesForFormula?.nom}"</DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="table_nom">Nom / Numéro</Label>
-              <Input
-                id="table_nom"
-                value={tableForm.nom_ou_numero}
-                onChange={(e) => setTableForm(prev => ({ ...prev, nom_ou_numero: e.target.value }))}
-                placeholder="Ex: Table n°1, Zone A, etc."
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="capacite">Capacité (personnes)</Label>
-              <Input
-                id="capacite"
+              <Label>Nombre de tables à ajouter</Label>
+              <Input 
                 type="number"
                 min="1"
-                value={tableForm.capacite}
-                onChange={(e) => setTableForm(prev => ({ ...prev, capacite: parseInt(e.target.value) || 1 }))}
-                className="h-11"
+                max="50"
+                value={tableCount} 
+                onChange={(e) => setTableCount(parseInt(e.target.value) || 1)}
               />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setTableDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={saveTable} className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
-              {editingTable ? 'Modifier' : 'Créer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bulk Table Dialog */}
-      <Dialog open={bulkTableDialogOpen} onOpenChange={setBulkTableDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="w-5 h-5" />
-              Ajouter plusieurs tables
-            </DialogTitle>
-            <DialogDescription>
-              Créez plusieurs tables en une seule fois
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="prefix">Préfixe</Label>
-                <Input
-                  id="prefix"
-                  value={bulkTableForm.prefix}
-                  onChange={(e) => setBulkTableForm(prev => ({ ...prev, prefix: e.target.value }))}
-                  placeholder="Table"
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="start">Commencer à</Label>
-                <Input
-                  id="start"
-                  type="number"
-                  min="1"
-                  value={bulkTableForm.start}
-                  onChange={(e) => setBulkTableForm(prev => ({ ...prev, start: parseInt(e.target.value) || 1 }))}
-                  className="h-11"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="count">Nombre de tables</Label>
-                <Input
-                  id="count"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={bulkTableForm.count}
-                  onChange={(e) => setBulkTableForm(prev => ({ ...prev, count: parseInt(e.target.value) || 1 }))}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bulk_capacite">Capacité</Label>
-                <Input
-                  id="bulk_capacite"
-                  type="number"
-                  min="1"
-                  value={bulkTableForm.capacite}
-                  onChange={(e) => setBulkTableForm(prev => ({ ...prev, capacite: parseInt(e.target.value) || 1 }))}
-                  className="h-11"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-muted text-sm">
-              <p className="font-medium mb-2">Aperçu :</p>
-              <p className="text-muted-foreground">
-                {bulkTableForm.prefix} n°{bulkTableForm.start} → {bulkTableForm.prefix} n°{bulkTableForm.start + bulkTableForm.count - 1}
+              <p className="text-xs text-muted-foreground">
+                Les tables seront numérotées automatiquement
               </p>
             </div>
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setBulkTableDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={addBulkTables} className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
-              Créer {bulkTableForm.count} tables
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTableDialogOpen(false)}>Annuler</Button>
+            <Button onClick={addTables} className="bg-emerald-500 hover:bg-emerald-600">
+              Ajouter {tableCount} table(s)
             </Button>
           </DialogFooter>
         </DialogContent>
