@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft, RefreshCw, Sparkles, Crown, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -26,15 +27,16 @@ const getFeatureIcon = (feature: string) => {
   return Star;
 };
 
-const getColorClass = (index: number) => {
-  const colors = [
-    "from-emerald-500/20 to-emerald-600/10",
-    "from-teal-500/20 to-teal-600/10",
-    "from-green-500/20 to-green-600/10",
-    "from-lime-500/20 to-lime-600/10",
-    "from-yellow-500/20 to-yellow-600/10",
+const getCardStyle = (index: number, total: number) => {
+  const isPopular = index === Math.floor(total / 2) && total > 2;
+  const styles = [
+    { gradient: "from-emerald-500 to-teal-600", glow: "shadow-emerald-500/20" },
+    { gradient: "from-teal-500 to-cyan-600", glow: "shadow-teal-500/20" },
+    { gradient: "from-green-500 to-emerald-600", glow: "shadow-green-500/20" },
+    { gradient: "from-lime-500 to-green-600", glow: "shadow-lime-500/20" },
+    { gradient: "from-amber-500 to-orange-600", glow: "shadow-amber-500/20" },
   ];
-  return colors[index % colors.length];
+  return { ...styles[index % styles.length], isPopular };
 };
 
 const reservationSchema = z.object({
@@ -231,93 +233,124 @@ export default function ReservationPage() {
                 <p className="text-muted-foreground">Aucune formule disponible pour le moment.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                {formulas.map((formule, index) => (
-                  <div
-                    key={formule.id}
-                    className={`group relative bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 ${
-                      index === Math.floor(formulas.length / 2) ? "ring-2 ring-primary md:scale-105" : ""
-                    }`}
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    {/* Popular Badge for middle item */}
-                    {index === Math.floor(formulas.length / 2) && formulas.length > 2 && (
-                      <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold animate-pulse">
-                        Populaire
-                      </div>
-                    )}
-
-                    {/* Image */}
-                    <div className="relative h-56 overflow-hidden">
-                      <div className={`absolute inset-0 bg-gradient-to-br ${getColorClass(index)}`} />
-                      {formule.photo_url ? (
-                        <img
-                          src={formule.photo_url}
-                          alt={formule.nom}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20">
-                          <TreePine className="w-16 h-16 text-primary/40" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6 space-y-4">
-                      {/* Header */}
-                      <div className="space-y-2">
-                        <h3 className="text-xl font-bold text-foreground">{formule.nom}</h3>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Users className="w-4 h-4" />
-                          <span className="text-sm">{formule.nb_personnes} personnes</span>
-                        </div>
-                        {formule.description_courte && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {formule.description_courte}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Features/Tags */}
-                      {formule.tags && formule.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {formule.tags.map((tag) => {
-                            const Icon = getFeatureIcon(tag);
-                            return (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium text-secondary-foreground"
-                              >
-                                <Icon className="w-3.5 h-3.5" />
-                                {tag}
-                              </span>
-                            );
-                          })}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+                {formulas.map((formule, index) => {
+                  const style = getCardStyle(index, formulas.length);
+                  return (
+                    <div
+                      key={formule.id}
+                      className={`group relative bg-card rounded-[2rem] overflow-hidden transition-all duration-500 hover:-translate-y-3 ${
+                        style.isPopular 
+                          ? `ring-2 ring-primary shadow-2xl ${style.glow} scale-[1.02] z-10` 
+                          : `shadow-lg hover:shadow-2xl hover:${style.glow}`
+                      }`}
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      {/* Popular Badge */}
+                      {style.isPopular && (
+                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-xs font-bold shadow-lg">
+                          <Crown className="w-3.5 h-3.5" />
+                          Populaire
                         </div>
                       )}
 
-                      {/* Price */}
-                      <div className="pt-4 border-t border-border">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <span className="text-3xl font-bold text-primary">{formule.prix_dzd}</span>
-                            <span className="text-lg text-muted-foreground ml-1">DA</span>
+                      {/* Premium indicator for last item */}
+                      {index === formulas.length - 1 && (
+                        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold shadow-lg">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          VIP
+                        </div>
+                      )}
+
+                      {/* Image with overlay gradient */}
+                      <div className="relative h-52 overflow-hidden">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-30`} />
+                        {formule.photo_url ? (
+                          <img
+                            src={formule.photo_url}
+                            alt={formule.nom}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          />
+                        ) : (
+                          <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${style.gradient}`}>
+                            <TreePine className="w-20 h-20 text-white/50" />
                           </div>
-                          <Button 
-                            variant="nature" 
-                            size="sm" 
-                            className="group-hover:scale-105 transition-transform"
-                            onClick={() => handleSelectFormule(formule)}
-                          >
-                            Réserver
-                          </Button>
+                        )}
+                        {/* Bottom gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                        
+                        {/* Price badge floating on image */}
+                        <div className="absolute bottom-4 left-4 z-10">
+                          <div className="bg-background/95 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-lg border border-border/50">
+                            <span className="text-2xl font-black text-primary">{formule.prix_dzd.toLocaleString()}</span>
+                            <span className="text-sm font-medium text-muted-foreground ml-1">DA</span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Content */}
+                      <div className="p-6 space-y-4">
+                        {/* Header */}
+                        <div className="space-y-3">
+                          <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            {formule.nom}
+                          </h3>
+                          
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="gap-1.5 py-1 px-3 border-primary/30 text-primary">
+                              <Users className="w-3.5 h-3.5" />
+                              {formule.nb_personnes} pers.
+                            </Badge>
+                            {style.isPopular && (
+                              <Badge variant="secondary" className="gap-1 py-1">
+                                <Heart className="w-3 h-3 fill-current" />
+                                Favoris
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {formule.description_courte && (
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {formule.description_courte}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Features/Tags */}
+                        {formule.tags && formule.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {formule.tags.map((tag) => {
+                              const Icon = getFeatureIcon(tag);
+                              return (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/80 text-xs font-medium text-foreground border border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                                >
+                                  <Icon className="w-3.5 h-3.5 text-primary" />
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* CTA Button */}
+                        <Button 
+                          variant={style.isPopular ? "nature" : "outline"} 
+                          size="lg" 
+                          className={`w-full mt-4 rounded-xl font-semibold transition-all group-hover:shadow-lg ${
+                            style.isPopular 
+                              ? "group-hover:scale-[1.02]" 
+                              : "hover:bg-primary hover:text-primary-foreground group-hover:border-primary"
+                          }`}
+                          onClick={() => handleSelectFormule(formule)}
+                        >
+                          Réserver cette formule
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
