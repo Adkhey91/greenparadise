@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import HomePage from "./pages/HomePage";
 import ReservationPage from "./pages/ReservationPage";
+import ServicesPage from "./pages/ServicesPage";
 import GaleriePage from "./pages/GaleriePage";
 import ContactPage from "./pages/ContactPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
@@ -29,6 +30,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/services" element={<ServicesPage />} />
             <Route path="/reservation" element={<ReservationPage />} />
             <Route path="/galerie" element={<GaleriePage />} />
             <Route path="/contact" element={<ContactPage />} />
