@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_sections: {
+        Row: {
+          actif: boolean
+          created_at: string
+          description: string | null
+          id: string
+          ordre: number
+          photo_filename: string | null
+          photo_url: string | null
+          prix_dzd: number | null
+          section_type: string
+          tags: string[] | null
+          titre: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          ordre?: number
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd?: number | null
+          section_type: string
+          tags?: string[] | null
+          titre: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          ordre?: number
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd?: number | null
+          section_type?: string
+          tags?: string[] | null
+          titre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       formulas: {
         Row: {
           actif: boolean
