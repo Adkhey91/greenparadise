@@ -141,11 +141,11 @@ export default function RestoPage() {
 
   const getTableColor = (statut: string) => {
     switch (statut) {
-      case 'libre': return 'bg-green-500 hover:bg-green-600';
-      case 'occupee': return 'bg-red-500';
-      case 'reservee': return 'bg-amber-500';
-      case 'hs': return 'bg-gray-400';
-      default: return 'bg-gray-300';
+      case 'libre': return 'bg-chalet-gold hover:bg-chalet-gold/90';
+      case 'occupee': return 'bg-rose-600';
+      case 'reservee': return 'bg-chalet-wood';
+      case 'hs': return 'bg-chalet-beige';
+      default: return 'bg-chalet-beige';
     }
   };
 
@@ -216,33 +216,36 @@ export default function RestoPage() {
 
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 nature-gradient opacity-90" />
+      {/* Hero Section - Chalet Prestige */}
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 chalet-gradient opacity-95" />
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
-            backgroundImage: 'url(https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920)',
+            backgroundImage: 'url(https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1920)',
             mixBlendMode: 'overlay'
           }}
         />
+        {/* Decorative wood texture overlay */}
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800)', backgroundSize: '400px' }} />
+        
         <div className="relative z-10 text-center px-4 py-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-6">
-            <UtensilsCrossed className="w-5 h-5 text-white" />
-            <span className="text-white font-medium">Cuisine Traditionnelle</span>
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-chalet-gold/20 backdrop-blur-sm rounded-full mb-8 border border-chalet-gold/30">
+            <UtensilsCrossed className="w-5 h-5 text-chalet-gold" />
+            <span className="text-chalet-gold font-medium tracking-wide uppercase text-sm">Gastronomie d'Exception</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Restaurant Jardin Vert
+          <h1 className="text-5xl md:text-7xl font-bold text-chalet-cream mb-6 tracking-tight">
+            Le Chalet
           </h1>
-          <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
-            Savourez une cuisine authentique dans un cadre naturel exceptionnel
+          <p className="text-xl text-chalet-cream/80 max-w-2xl mx-auto mb-10 font-light">
+            Une expérience culinaire raffinée dans un cadre chaleureux et prestigieux
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button size="lg" variant="secondary" className="gap-2">
+            <Button size="lg" className="bg-chalet-gold hover:bg-chalet-gold/90 text-chalet-charcoal font-semibold gap-2 px-8">
               <Coffee className="w-5 h-5" />
-              Voir le Menu
+              Découvrir le Menu
             </Button>
-            <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 gap-2">
+            <Button size="lg" variant="outline" className="bg-transparent text-chalet-cream border-chalet-cream/40 hover:bg-chalet-cream/10 gap-2 px-8">
               <CalendarIcon className="w-5 h-5" />
               Réserver une Table
             </Button>
@@ -250,23 +253,24 @@ export default function RestoPage() {
         </div>
       </section>
 
-      {/* Menu Section */}
-      <section className="py-16 bg-muted/30">
+      {/* Menu Section - Chalet Style */}
+      <section className="py-20 bg-chalet-cream">
         <div className="container mx-auto container-padding">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Notre Menu</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Des plats préparés avec passion, à base de produits frais et locaux
+          <div className="text-center mb-14">
+            <span className="text-chalet-gold uppercase tracking-widest text-sm font-medium mb-3 block">Nos Créations</span>
+            <h2 className="text-4xl font-bold text-chalet-charcoal mb-4">La Carte</h2>
+            <p className="text-chalet-wood-light max-w-2xl mx-auto font-light">
+              Une sélection raffinée de mets préparés avec passion et produits nobles
             </p>
           </div>
 
           <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as RestoCategorie)} className="w-full">
-            <TabsList className="grid grid-cols-4 max-w-lg mx-auto mb-8 h-auto">
+            <TabsList className="grid grid-cols-4 max-w-lg mx-auto mb-10 h-auto bg-chalet-beige/50 p-1 rounded-xl">
               {CATEGORIES.map(cat => (
                 <TabsTrigger 
                   key={cat.value} 
                   value={cat.value}
-                  className="flex flex-col items-center gap-1 py-3 data-[state=active]:nature-gradient data-[state=active]:text-white"
+                  className="flex flex-col items-center gap-1 py-3 rounded-lg data-[state=active]:bg-chalet-wood data-[state=active]:text-chalet-cream transition-all"
                 >
                   <cat.icon className="w-5 h-5" />
                   <span className="text-xs font-medium">{cat.label}</span>
@@ -277,60 +281,59 @@ export default function RestoPage() {
             {CATEGORIES.map(cat => (
               <TabsContent key={cat.value} value={cat.value}>
                 {loading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {[1,2,3].map(i => (
-                      <Card key={i} className="animate-pulse">
-                        <div className="h-48 bg-muted rounded-t-lg" />
-                        <CardContent className="p-4 space-y-2">
-                          <div className="h-4 bg-muted rounded w-3/4" />
-                          <div className="h-3 bg-muted rounded w-1/2" />
+                      <Card key={i} className="animate-pulse bg-white border-chalet-beige">
+                        <div className="h-52 bg-chalet-beige rounded-t-xl" />
+                        <CardContent className="p-5 space-y-3">
+                          <div className="h-4 bg-chalet-beige rounded w-3/4" />
+                          <div className="h-3 bg-chalet-beige rounded w-1/2" />
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 ) : filteredItems.length === 0 ? (
-                  <div className="text-center py-12">
-                    <UtensilsCrossed className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                    <p className="text-muted-foreground">Aucun plat disponible dans cette catégorie</p>
+                  <div className="text-center py-16">
+                    <UtensilsCrossed className="w-16 h-16 mx-auto text-chalet-beige mb-4" />
+                    <p className="text-chalet-wood-light">Aucun plat disponible dans cette catégorie</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredItems.map(item => (
-                      <Card key={item.id} className="overflow-hidden group hover:shadow-lg transition-all">
-                        <div className="relative h-48 bg-muted">
+                      <Card key={item.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white border-0 shadow-md rounded-xl">
+                        <div className="relative h-52 bg-chalet-beige">
                           {item.photo_url ? (
                             <img 
                               src={item.photo_url} 
                               alt={item.nom}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <UtensilsCrossed className="w-16 h-16 text-muted-foreground/30" />
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-chalet-beige to-chalet-cream">
+                              <UtensilsCrossed className="w-16 h-16 text-chalet-wood-light/30" />
                             </div>
                           )}
-                          <Badge className="absolute top-3 right-3 nature-gradient text-white border-0">
+                          <Badge className="absolute top-4 right-4 bg-chalet-charcoal text-chalet-gold border-0 font-semibold px-3 py-1">
                             {item.prix_dzd.toLocaleString()} DA
                           </Badge>
                         </div>
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold text-lg mb-1">{item.nom}</h3>
+                        <CardContent className="p-5">
+                          <h3 className="font-semibold text-lg mb-2 text-chalet-charcoal">{item.nom}</h3>
                           {item.description && (
-                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{item.description}</p>
+                            <p className="text-sm text-chalet-wood-light mb-4 line-clamp-2">{item.description}</p>
                           )}
                           {item.allergenes && item.allergenes.length > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-amber-600 mb-3">
+                            <div className="flex items-center gap-1 text-xs text-chalet-gold mb-4">
                               <AlertCircle className="w-3 h-3" />
                               {item.allergenes.join(', ')}
                             </div>
                           )}
                           <Button 
                             onClick={() => addToCart(item)}
-                            className="w-full gap-2"
-                            variant="outline"
+                            className="w-full gap-2 bg-chalet-wood hover:bg-chalet-charcoal text-chalet-cream"
                           >
                             <ShoppingCart className="w-4 h-4" />
-                            Ajouter au panier
+                            Ajouter
                           </Button>
                         </CardContent>
                       </Card>
@@ -343,47 +346,50 @@ export default function RestoPage() {
         </div>
       </section>
 
-      {/* Table Plan Section */}
-      <section className="py-16">
+      {/* Table Plan Section - Chalet Style */}
+      <section className="py-20 bg-gradient-to-b from-chalet-beige/30 to-chalet-cream">
         <div className="container mx-auto container-padding">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Plan des Tables</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
-              Cliquez sur une table verte pour réserver
+          <div className="text-center mb-14">
+            <span className="text-chalet-gold uppercase tracking-widest text-sm font-medium mb-3 block">Votre Table</span>
+            <h2 className="text-4xl font-bold text-chalet-charcoal mb-4">Plan de Salle</h2>
+            <p className="text-chalet-wood-light max-w-2xl mx-auto mb-8 font-light">
+              Sélectionnez votre table préférée
             </p>
-            <div className="flex justify-center gap-6 flex-wrap">
+            <div className="flex justify-center gap-8 flex-wrap">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-500" />
-                <span className="text-sm">Libre</span>
+                <div className="w-4 h-4 rounded-full bg-chalet-gold" />
+                <span className="text-sm text-chalet-charcoal">Disponible</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-red-500" />
-                <span className="text-sm">Occupée</span>
+                <div className="w-4 h-4 rounded-full bg-rose-600" />
+                <span className="text-sm text-chalet-charcoal">Occupée</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-amber-500" />
-                <span className="text-sm">Réservée</span>
+                <div className="w-4 h-4 rounded-full bg-chalet-wood" />
+                <span className="text-sm text-chalet-charcoal">Réservée</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-gray-400" />
-                <span className="text-sm">Hors service</span>
+                <div className="w-4 h-4 rounded-full bg-chalet-beige" />
+                <span className="text-sm text-chalet-charcoal">Hors service</span>
               </div>
             </div>
           </div>
 
           <div className="max-w-3xl mx-auto">
-            <Card className="p-8">
-              <div className="grid grid-cols-4 gap-4">
+            <Card className="p-10 bg-white/80 backdrop-blur border-chalet-beige shadow-xl rounded-2xl">
+              <div className="grid grid-cols-4 gap-5">
                 {tables.map(table => (
                   <button
                     key={table.id}
                     onClick={() => handleTableClick(table)}
                     disabled={table.statut !== 'libre'}
                     className={cn(
-                      "aspect-square rounded-xl flex flex-col items-center justify-center text-white font-bold transition-all",
-                      getTableColor(table.statut),
-                      table.statut === 'libre' && "cursor-pointer transform hover:scale-105 shadow-md hover:shadow-lg",
-                      table.statut !== 'libre' && "cursor-not-allowed opacity-80"
+                      "aspect-square rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300",
+                      table.statut === 'libre' && "bg-chalet-gold text-chalet-charcoal cursor-pointer transform hover:scale-105 shadow-lg hover:shadow-xl hover:bg-chalet-gold/90",
+                      table.statut === 'occupee' && "bg-rose-600 text-white cursor-not-allowed",
+                      table.statut === 'reservee' && "bg-chalet-wood text-chalet-cream cursor-not-allowed",
+                      table.statut === 'hs' && "bg-chalet-beige text-chalet-wood-light cursor-not-allowed",
+                      table.statut !== 'libre' && "opacity-80"
                     )}
                   >
                     <span className="text-2xl">{table.numero}</span>
@@ -396,20 +402,20 @@ export default function RestoPage() {
         </div>
       </section>
 
-      {/* Reservation Dialog */}
+      {/* Reservation Dialog - Chalet Style */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-chalet-cream border-chalet-beige">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-chalet-charcoal">
+              <UtensilsCrossed className="w-5 h-5 text-chalet-gold" />
               Réserver la Table {selectedTable?.numero}
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                Table pour <strong>{selectedTable?.capacite} personnes</strong> max
+            <div className="p-3 bg-chalet-beige/50 rounded-lg border border-chalet-beige">
+              <p className="text-sm text-chalet-wood">
+                Table pour <strong className="text-chalet-charcoal">{selectedTable?.capacite} personnes</strong> max
               </p>
             </div>
 
@@ -498,7 +504,7 @@ export default function RestoPage() {
             <Button 
               onClick={handleReservation}
               disabled={submitting}
-              className="w-full nature-gradient"
+              className="w-full bg-chalet-gold hover:bg-chalet-gold/90 text-chalet-charcoal font-semibold"
             >
               {submitting ? "Envoi..." : "Confirmer la réservation"}
             </Button>
@@ -506,13 +512,13 @@ export default function RestoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Cart Floating Button */}
+      {/* Cart Floating Button - Chalet Style */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 right-6 z-50">
-          <Button size="lg" className="nature-gradient gap-2 shadow-lg">
+          <Button size="lg" className="bg-chalet-charcoal hover:bg-chalet-wood text-chalet-cream gap-2 shadow-xl">
             <ShoppingCart className="w-5 h-5" />
-            <span>{cartCount}</span>
-            <span className="border-l border-white/30 pl-2 ml-2">
+            <span className="text-chalet-gold font-bold">{cartCount}</span>
+            <span className="border-l border-chalet-gold/30 pl-2 ml-2">
               {cartTotal.toLocaleString()} DA
             </span>
           </Button>
