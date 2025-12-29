@@ -6,6 +6,8 @@ import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, Tr
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { PaymentModal } from "@/components/PaymentModal";
+import { PaymentSuccessModal } from "@/components/PaymentSuccessModal";
 
 interface Formula {
   id: string;
@@ -66,6 +68,10 @@ export default function ReservationPage() {
   const [selectedFormule, setSelectedFormule] = useState<Formula | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
+  const [confirmationCode, setConfirmationCode] = useState("");
   const [formData, setFormData] = useState({
     nom: "",
     telephone: "",
@@ -131,7 +137,8 @@ export default function ReservationPage() {
     const validatedData = validation.data;
     setIsSubmitting(true);
     
-    const { error } = await supabase.from("reservations").insert({
+    // Create reservation with pending payment status
+    const { data, error } = await supabase.from("reservations").insert({
       nom: validatedData.nom,
       telephone: validatedData.telephone,
       email: validatedData.email || null,
@@ -139,7 +146,8 @@ export default function ReservationPage() {
       formule: validatedData.formule,
       nombre_personnes: validatedData.nombrePersonnes ? parseInt(validatedData.nombrePersonnes) : null,
       message: validatedData.message || null,
-    });
+      statut: 'paiement_en_attente'
+    }).select('id').single();
 
     setIsSubmitting(false);
 
@@ -152,7 +160,16 @@ export default function ReservationPage() {
       return;
     }
 
-    setIsSuccess(true);
+    // Store reservation ID and open payment modal
+    setPendingReservationId(data.id);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = (code: string) => {
+    setConfirmationCode(code);
+    setShowPaymentModal(false);
+    setShowSuccessModal(true);
+    // Reset form
     setFormData({
       nom: "",
       telephone: "",
@@ -162,6 +179,13 @@ export default function ReservationPage() {
       nombrePersonnes: "",
       message: "",
     });
+    setPendingReservationId(null);
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    setConfirmationCode("");
+    setIsSuccess(true);
   };
 
   const handleNewReservation = () => {
@@ -594,6 +618,34 @@ export default function ReservationPage() {
           </div>
         </div>
       </section>
+
+      {/* Payment Modal */}
+      {pendingReservationId && selectedFormule && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+          reservationData={{
+            id: pendingReservationId,
+            type: 'jardin',
+            amount: selectedFormule.prix_dzd,
+            customerName: formData.nom,
+            customerPhone: formData.telephone,
+            customerEmail: formData.email || undefined,
+            date: formData.date,
+            formule: selectedFormule.nom,
+          }}
+        />
+      )}
+
+      {/* Success Modal */}
+      <PaymentSuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessClose}
+        confirmationCode={confirmationCode}
+        date={formData.date}
+        type="jardin"
+      />
     </Layout>
   );
 }

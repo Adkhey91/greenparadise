@@ -27,6 +27,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PaymentModal } from "@/components/PaymentModal";
+import { PaymentSuccessModal } from "@/components/PaymentSuccessModal";
 
 type RestoCategorie = 'entrees' | 'plats' | 'desserts' | 'boissons';
 
@@ -77,7 +79,14 @@ export default function RestoPage() {
   const [reservationEmail, setReservationEmail] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
+  const [confirmationCode, setConfirmationCode] = useState("");
   const { toast } = useToast();
+
+  // Fixed amount for restaurant table reservation (can be adjusted)
+  const RESTO_RESERVATION_AMOUNT = 500; // 500 DA
 
   useEffect(() => {
     fetchData();
@@ -155,7 +164,8 @@ export default function RestoPage() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('resto_reservations').insert({
+      // Create reservation with pending payment status
+      const { data, error } = await supabase.from('resto_reservations').insert({
         table_id: selectedTable.id,
         nom: reservationNom,
         telephone: reservationTel,
@@ -163,28 +173,41 @@ export default function RestoPage() {
         date_reservation: format(reservationDate, 'yyyy-MM-dd'),
         heure: reservationHeure,
         nombre_personnes: reservationPersonnes,
-        statut: 'en_attente'
-      });
+        montant_dzd: RESTO_RESERVATION_AMOUNT,
+        statut: 'paiement_en_attente'
+      }).select('id').single();
 
       if (error) throw error;
 
-      toast({ 
-        title: "Réservation réussie ! 📞", 
-        description: "On va vous contacter dans 5 minutes pour confirmer.",
-      });
+      // Store reservation ID and open payment modal
+      setPendingReservationId(data.id);
       setIsDialogOpen(false);
-      setSelectedTable(null);
-      setReservationNom("");
-      setReservationTel("");
-      setReservationEmail("");
-      setReservationDate(undefined);
-      setReservationHeure("");
+      setShowPaymentModal(true);
     } catch (error) {
       console.error('Error:', error);
       toast({ title: "Erreur", description: "Impossible de créer la réservation", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaymentSuccess = (code: string) => {
+    setConfirmationCode(code);
+    setShowPaymentModal(false);
+    setShowSuccessModal(true);
+    // Reset form
+    setSelectedTable(null);
+    setReservationNom("");
+    setReservationTel("");
+    setReservationEmail("");
+    setReservationDate(undefined);
+    setReservationHeure("");
+    setPendingReservationId(null);
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    setConfirmationCode("");
   };
 
   const filteredItems = menuItems.filter(item => item.categorie === activeCategory);
@@ -495,6 +518,35 @@ export default function RestoPage() {
           </Button>
         </div>
       )}
+
+      {/* Payment Modal */}
+      {pendingReservationId && selectedTable && reservationDate && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+          reservationData={{
+            id: pendingReservationId,
+            type: 'resto',
+            amount: RESTO_RESERVATION_AMOUNT,
+            customerName: reservationNom,
+            customerPhone: reservationTel,
+            customerEmail: reservationEmail || undefined,
+            tableNumber: selectedTable.numero,
+            date: format(reservationDate, 'dd/MM/yyyy', { locale: fr }),
+          }}
+        />
+      )}
+
+      {/* Success Modal */}
+      <PaymentSuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessClose}
+        confirmationCode={confirmationCode}
+        tableNumber={selectedTable?.numero}
+        date={reservationDate ? format(reservationDate, 'dd/MM/yyyy', { locale: fr }) : ''}
+        type="resto"
+      />
     </Layout>
   );
 }
