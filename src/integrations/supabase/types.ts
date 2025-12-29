@@ -211,6 +211,146 @@ export type Database = {
         }
         Relationships: []
       }
+      resto_menu_items: {
+        Row: {
+          allergenes: string[] | null
+          categorie: Database["public"]["Enums"]["resto_categorie"]
+          created_at: string
+          description: string | null
+          disponible: boolean
+          id: string
+          nom: string
+          ordre: number
+          photo_filename: string | null
+          photo_url: string | null
+          prix_dzd: number
+          stock: number | null
+          updated_at: string
+        }
+        Insert: {
+          allergenes?: string[] | null
+          categorie: Database["public"]["Enums"]["resto_categorie"]
+          created_at?: string
+          description?: string | null
+          disponible?: boolean
+          id?: string
+          nom: string
+          ordre?: number
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Update: {
+          allergenes?: string[] | null
+          categorie?: Database["public"]["Enums"]["resto_categorie"]
+          created_at?: string
+          description?: string | null
+          disponible?: boolean
+          id?: string
+          nom?: string
+          ordre?: number
+          photo_filename?: string | null
+          photo_url?: string | null
+          prix_dzd?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      resto_reservations: {
+        Row: {
+          created_at: string
+          date_reservation: string
+          email: string | null
+          heure: string
+          id: string
+          mode_paiement: string | null
+          montant_dzd: number | null
+          nom: string
+          nombre_personnes: number
+          notes: string | null
+          statut: string
+          table_id: string
+          telephone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_reservation: string
+          email?: string | null
+          heure: string
+          id?: string
+          mode_paiement?: string | null
+          montant_dzd?: number | null
+          nom: string
+          nombre_personnes?: number
+          notes?: string | null
+          statut?: string
+          table_id: string
+          telephone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_reservation?: string
+          email?: string | null
+          heure?: string
+          id?: string
+          mode_paiement?: string | null
+          montant_dzd?: number | null
+          nom?: string
+          nombre_personnes?: number
+          notes?: string | null
+          statut?: string
+          table_id?: string
+          telephone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resto_reservations_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "resto_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resto_tables: {
+        Row: {
+          capacite: number
+          created_at: string
+          id: string
+          numero: number
+          position_x: number
+          position_y: number
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          capacite?: number
+          created_at?: string
+          id?: string
+          numero: number
+          position_x?: number
+          position_y?: number
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          capacite?: number
+          created_at?: string
+          id?: string
+          numero?: number
+          position_x?: number
+          position_y?: number
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -247,6 +387,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      resto_categorie: "entrees" | "plats" | "desserts" | "boissons"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -375,6 +516,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      resto_categorie: ["entrees", "plats", "desserts", "boissons"],
     },
   },
 } as const

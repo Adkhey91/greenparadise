@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import HomePage from "./pages/HomePage";
 import ReservationPage from "./pages/ReservationPage";
 import ServicesPage from "./pages/ServicesPage";
+import RestoPage from "./pages/RestoPage";
 import GaleriePage from "./pages/GaleriePage";
 import ContactPage from "./pages/ContactPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
@@ -17,6 +18,7 @@ import MessagesPage from "./pages/admin/MessagesPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import GardenManagementPage from "./pages/admin/GardenManagementPage";
 import ContentManagementPage from "./pages/admin/ContentManagementPage";
+import RestoManagementPage from "./pages/admin/RestoManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/resto" element={<RestoPage />} />
             <Route path="/reservation" element={<ReservationPage />} />
             <Route path="/galerie" element={<GaleriePage />} />
             <Route path="/contact" element={<ContactPage />} />
@@ -38,6 +41,7 @@ const App = () => (
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<OverviewPage />} />
               <Route path="garden" element={<GardenManagementPage />} />
+              <Route path="resto" element={<RestoManagementPage />} />
               <Route path="content" element={<ContentManagementPage />} />
               <Route path="reservations" element={<ReservationsPage />} />
               <Route path="messages" element={<MessagesPage />} />
