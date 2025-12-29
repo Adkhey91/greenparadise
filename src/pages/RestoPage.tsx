@@ -215,65 +215,72 @@ export default function RestoPage() {
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
   return (
-    <Layout>
-      {/* Hero Section - Chalet Prestige */}
-      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 chalet-gradient opacity-95" />
+    <div className="min-h-screen bg-chalet-cream">
+      {/* Hero Section - Modern Chalet */}
+      <section className="relative min-h-[75vh] flex items-center justify-center overflow-hidden">
+        {/* Elegant gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-chalet-charcoal via-chalet-wood/95 to-chalet-warm/90" />
         <div 
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center opacity-40"
           style={{ 
-            backgroundImage: 'url(https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1920)',
-            mixBlendMode: 'overlay'
+            backgroundImage: 'url(https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1920)'
           }}
         />
-        {/* Decorative wood texture overlay */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800)', backgroundSize: '400px' }} />
+        {/* Subtle pattern overlay */}
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px)' }} />
         
-        <div className="relative z-10 text-center px-4 py-20">
-          <div className="inline-flex items-center gap-3 px-6 py-3 bg-chalet-gold/20 backdrop-blur-sm rounded-full mb-8 border border-chalet-gold/30">
-            <UtensilsCrossed className="w-5 h-5 text-chalet-gold" />
-            <span className="text-chalet-gold font-medium tracking-wide uppercase text-sm">Gastronomie d'Exception</span>
+        <div className="relative z-10 text-center px-4 py-24 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-chalet-gold/15 backdrop-blur-md rounded-full mb-10 border border-chalet-gold/25">
+            <span className="w-1.5 h-1.5 rounded-full bg-chalet-gold animate-pulse" />
+            <span className="text-chalet-gold/90 font-medium tracking-widest uppercase text-xs">Restaurant Gastronomique</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold text-chalet-cream mb-6 tracking-tight">
-            Le Chalet
+          <h1 className="text-6xl md:text-8xl font-light text-chalet-cream mb-6 tracking-tight">
+            Le <span className="font-semibold">Chalet</span>
           </h1>
-          <p className="text-xl text-chalet-cream/80 max-w-2xl mx-auto mb-10 font-light">
-            Une expérience culinaire raffinée dans un cadre chaleureux et prestigieux
+          <div className="w-24 h-px bg-gradient-to-r from-transparent via-chalet-gold/60 to-transparent mx-auto mb-8" />
+          <p className="text-lg md:text-xl text-chalet-cream/70 max-w-xl mx-auto mb-12 font-light leading-relaxed">
+            Une expérience culinaire d'exception dans l'écrin chaleureux d'un chalet de montagne
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button size="lg" className="bg-chalet-gold hover:bg-chalet-gold/90 text-chalet-charcoal font-semibold gap-2 px-8">
-              <Coffee className="w-5 h-5" />
-              Découvrir le Menu
+            <Button size="lg" className="bg-chalet-gold/90 hover:bg-chalet-gold text-chalet-charcoal font-medium gap-3 px-8 h-14 rounded-full transition-all hover:scale-105">
+              <UtensilsCrossed className="w-5 h-5" />
+              Découvrir la Carte
             </Button>
-            <Button size="lg" variant="outline" className="bg-transparent text-chalet-cream border-chalet-cream/40 hover:bg-chalet-cream/10 gap-2 px-8">
+            <Button size="lg" variant="outline" className="bg-transparent text-chalet-cream/90 border-chalet-cream/20 hover:bg-chalet-cream/10 hover:border-chalet-cream/40 gap-3 px-8 h-14 rounded-full transition-all">
               <CalendarIcon className="w-5 h-5" />
-              Réserver une Table
+              Réserver
             </Button>
           </div>
         </div>
+        
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-chalet-cream to-transparent" />
       </section>
 
-      {/* Menu Section - Chalet Style */}
-      <section className="py-20 bg-chalet-cream">
+      {/* Menu Section - Elegant Chalet */}
+      <section className="py-24 bg-chalet-cream">
         <div className="container mx-auto container-padding">
-          <div className="text-center mb-14">
-            <span className="text-chalet-gold uppercase tracking-widest text-sm font-medium mb-3 block">Nos Créations</span>
-            <h2 className="text-4xl font-bold text-chalet-charcoal mb-4">La Carte</h2>
-            <p className="text-chalet-wood-light max-w-2xl mx-auto font-light">
-              Une sélection raffinée de mets préparés avec passion et produits nobles
+          <div className="text-center mb-16">
+            <span className="inline-block text-chalet-warm uppercase tracking-[0.3em] text-xs font-medium mb-4">Saveurs</span>
+            <h2 className="text-4xl md:text-5xl font-light text-chalet-charcoal mb-4">
+              Notre <span className="font-semibold">Carte</span>
+            </h2>
+            <div className="w-16 h-px bg-chalet-gold/50 mx-auto mb-6" />
+            <p className="text-chalet-wood-light max-w-lg mx-auto font-light">
+              Des créations raffinées, sublimées par des produits d'exception
             </p>
           </div>
 
           <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as RestoCategorie)} className="w-full">
-            <TabsList className="grid grid-cols-4 max-w-lg mx-auto mb-10 h-auto bg-chalet-beige/50 p-1 rounded-xl">
+            <TabsList className="flex justify-center gap-2 max-w-2xl mx-auto mb-14 h-auto bg-transparent p-0">
               {CATEGORIES.map(cat => (
                 <TabsTrigger 
                   key={cat.value} 
                   value={cat.value}
-                  className="flex flex-col items-center gap-1 py-3 rounded-lg data-[state=active]:bg-chalet-wood data-[state=active]:text-chalet-cream transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-full border border-chalet-beige bg-white data-[state=active]:bg-chalet-charcoal data-[state=active]:text-chalet-cream data-[state=active]:border-chalet-charcoal transition-all duration-300 hover:border-chalet-warm/50"
                 >
-                  <cat.icon className="w-5 h-5" />
-                  <span className="text-xs font-medium">{cat.label}</span>
+                  <cat.icon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{cat.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -283,60 +290,63 @@ export default function RestoPage() {
                 {loading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {[1,2,3].map(i => (
-                      <Card key={i} className="animate-pulse bg-white border-chalet-beige">
-                        <div className="h-52 bg-chalet-beige rounded-t-xl" />
-                        <CardContent className="p-5 space-y-3">
-                          <div className="h-4 bg-chalet-beige rounded w-3/4" />
-                          <div className="h-3 bg-chalet-beige rounded w-1/2" />
-                        </CardContent>
-                      </Card>
+                      <div key={i} className="animate-pulse bg-white rounded-2xl overflow-hidden shadow-sm">
+                        <div className="h-56 bg-chalet-beige/50" />
+                        <div className="p-6 space-y-3">
+                          <div className="h-5 bg-chalet-beige/50 rounded-full w-2/3" />
+                          <div className="h-4 bg-chalet-beige/50 rounded-full w-1/2" />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : filteredItems.length === 0 ? (
-                  <div className="text-center py-16">
-                    <UtensilsCrossed className="w-16 h-16 mx-auto text-chalet-beige mb-4" />
-                    <p className="text-chalet-wood-light">Aucun plat disponible dans cette catégorie</p>
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 rounded-full bg-chalet-beige/50 flex items-center justify-center mx-auto mb-6">
+                      <UtensilsCrossed className="w-10 h-10 text-chalet-warm/40" />
+                    </div>
+                    <p className="text-chalet-wood-light text-lg">Aucun plat disponible</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredItems.map(item => (
-                      <Card key={item.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white border-0 shadow-md rounded-xl">
-                        <div className="relative h-52 bg-chalet-beige">
+                      <div key={item.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-chalet-beige/50">
+                        <div className="relative h-56 overflow-hidden">
                           {item.photo_url ? (
                             <img 
                               src={item.photo_url} 
                               alt={item.nom}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-chalet-beige to-chalet-cream">
-                              <UtensilsCrossed className="w-16 h-16 text-chalet-wood-light/30" />
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-chalet-beige/30 to-chalet-cream">
+                              <UtensilsCrossed className="w-14 h-14 text-chalet-warm/20" />
                             </div>
                           )}
-                          <Badge className="absolute top-4 right-4 bg-chalet-charcoal text-chalet-gold border-0 font-semibold px-3 py-1">
+                          <div className="absolute inset-0 bg-gradient-to-t from-chalet-charcoal/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <span className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-chalet-charcoal px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg">
                             {item.prix_dzd.toLocaleString()} DA
-                          </Badge>
+                          </span>
                         </div>
-                        <CardContent className="p-5">
+                        <div className="p-6">
                           <h3 className="font-semibold text-lg mb-2 text-chalet-charcoal">{item.nom}</h3>
                           {item.description && (
-                            <p className="text-sm text-chalet-wood-light mb-4 line-clamp-2">{item.description}</p>
+                            <p className="text-sm text-chalet-wood-light mb-4 line-clamp-2 leading-relaxed">{item.description}</p>
                           )}
                           {item.allergenes && item.allergenes.length > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-chalet-gold mb-4">
-                              <AlertCircle className="w-3 h-3" />
-                              {item.allergenes.join(', ')}
+                            <div className="flex items-center gap-1.5 text-xs text-chalet-warm mb-4">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              <span>{item.allergenes.join(', ')}</span>
                             </div>
                           )}
                           <Button 
                             onClick={() => addToCart(item)}
-                            className="w-full gap-2 bg-chalet-wood hover:bg-chalet-charcoal text-chalet-cream"
+                            className="w-full gap-2 bg-chalet-charcoal hover:bg-chalet-wood text-chalet-cream rounded-full h-11 transition-all"
                           >
                             <ShoppingCart className="w-4 h-4" />
                             Ajouter
                           </Button>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -346,136 +356,165 @@ export default function RestoPage() {
         </div>
       </section>
 
-      {/* Table Plan Section - Chalet Style */}
-      <section className="py-20 bg-gradient-to-b from-chalet-beige/30 to-chalet-cream">
+      {/* Table Plan Section - Modern Elegant Design */}
+      <section className="py-24 bg-gradient-to-b from-chalet-cream via-white to-chalet-cream">
         <div className="container mx-auto container-padding">
-          <div className="text-center mb-14">
-            <span className="text-chalet-gold uppercase tracking-widest text-sm font-medium mb-3 block">Votre Table</span>
-            <h2 className="text-4xl font-bold text-chalet-charcoal mb-4">Plan de Salle</h2>
-            <p className="text-chalet-wood-light max-w-2xl mx-auto mb-8 font-light">
-              Sélectionnez votre table préférée
+          <div className="text-center mb-16">
+            <span className="inline-block text-chalet-warm uppercase tracking-[0.3em] text-xs font-medium mb-4">Réservation</span>
+            <h2 className="text-4xl md:text-5xl font-light text-chalet-charcoal mb-4">
+              Choisir sa <span className="font-semibold">Table</span>
+            </h2>
+            <div className="w-16 h-px bg-chalet-gold/50 mx-auto mb-6" />
+            <p className="text-chalet-wood-light max-w-lg mx-auto font-light mb-10">
+              Sélectionnez votre emplacement pour une soirée inoubliable
             </p>
+            
+            {/* Legend */}
             <div className="flex justify-center gap-8 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-chalet-gold" />
-                <span className="text-sm text-chalet-charcoal">Disponible</span>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-chalet-gold to-chalet-gold-muted shadow-sm" />
+                <span className="text-sm text-chalet-charcoal/80">Disponible</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-rose-600" />
-                <span className="text-sm text-chalet-charcoal">Occupée</span>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-chalet-rose" />
+                <span className="text-sm text-chalet-charcoal/80">Occupée</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-chalet-wood" />
-                <span className="text-sm text-chalet-charcoal">Réservée</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-chalet-beige" />
-                <span className="text-sm text-chalet-charcoal">Hors service</span>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-chalet-warm" />
+                <span className="text-sm text-chalet-charcoal/80">Réservée</span>
               </div>
             </div>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            <Card className="p-10 bg-white/80 backdrop-blur border-chalet-beige shadow-xl rounded-2xl">
-              <div className="grid grid-cols-4 gap-5">
+          <div className="max-w-4xl mx-auto">
+            {/* Restaurant floor plan visual */}
+            <div className="relative bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-chalet-beige/30">
+              {/* Decorative elements */}
+              <div className="absolute top-6 left-6 w-20 h-1 bg-chalet-beige/50 rounded-full" />
+              <div className="absolute top-6 right-6 flex gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-chalet-sage/50" />
+                <div className="w-2 h-2 rounded-full bg-chalet-gold/50" />
+                <div className="w-2 h-2 rounded-full bg-chalet-rose/50" />
+              </div>
+              
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
                 {tables.map(table => (
                   <button
                     key={table.id}
                     onClick={() => handleTableClick(table)}
                     disabled={table.statut !== 'libre'}
                     className={cn(
-                      "aspect-square rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300",
-                      table.statut === 'libre' && "bg-chalet-gold text-chalet-charcoal cursor-pointer transform hover:scale-105 shadow-lg hover:shadow-xl hover:bg-chalet-gold/90",
-                      table.statut === 'occupee' && "bg-rose-600 text-white cursor-not-allowed",
-                      table.statut === 'reservee' && "bg-chalet-wood text-chalet-cream cursor-not-allowed",
-                      table.statut === 'hs' && "bg-chalet-beige text-chalet-wood-light cursor-not-allowed",
-                      table.statut !== 'libre' && "opacity-80"
+                      "relative aspect-square rounded-2xl flex flex-col items-center justify-center font-medium transition-all duration-300 group",
+                      table.statut === 'libre' && "bg-gradient-to-br from-chalet-gold/90 to-chalet-gold text-chalet-charcoal cursor-pointer hover:scale-105 hover:shadow-lg hover:shadow-chalet-gold/20",
+                      table.statut === 'occupee' && "bg-chalet-rose text-chalet-warm cursor-not-allowed",
+                      table.statut === 'reservee' && "bg-chalet-warm/80 text-chalet-cream cursor-not-allowed",
+                      table.statut === 'hs' && "bg-chalet-beige/60 text-chalet-wood-light/50 cursor-not-allowed"
                     )}
                   >
-                    <span className="text-2xl">{table.numero}</span>
-                    <span className="text-xs opacity-80">{table.capacite}p</span>
+                    {/* Table shape indicator */}
+                    <div className={cn(
+                      "absolute inset-2 rounded-xl border-2 border-dashed opacity-30",
+                      table.statut === 'libre' ? "border-chalet-charcoal/40" : "border-current"
+                    )} />
+                    <span className="text-2xl md:text-3xl font-light">{table.numero}</span>
+                    <span className="text-[10px] uppercase tracking-wider opacity-70 mt-1">{table.capacite} pers.</span>
+                    {table.statut === 'libre' && (
+                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] uppercase tracking-wider opacity-0 group-hover:opacity-100 group-hover:-bottom-6 transition-all text-chalet-charcoal">
+                        Réserver
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
-            </Card>
+              
+              {/* Kitchen indicator */}
+              <div className="mt-10 pt-6 border-t border-chalet-beige/50">
+                <div className="flex items-center justify-center gap-2 text-chalet-wood-light/60 text-sm">
+                  <UtensilsCrossed className="w-4 h-4" />
+                  <span className="uppercase tracking-widest text-xs">Cuisine</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Reservation Dialog - Chalet Style */}
+      {/* Reservation Dialog - Modern Chalet Style */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md bg-chalet-cream border-chalet-beige">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-chalet-charcoal">
-              <UtensilsCrossed className="w-5 h-5 text-chalet-gold" />
-              Réserver la Table {selectedTable?.numero}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="p-3 bg-chalet-beige/50 rounded-lg border border-chalet-beige">
-              <p className="text-sm text-chalet-wood">
-                Table pour <strong className="text-chalet-charcoal">{selectedTable?.capacite} personnes</strong> max
-              </p>
+        <DialogContent className="max-w-lg bg-white border-0 shadow-2xl rounded-3xl p-0 overflow-hidden">
+          <div className="bg-gradient-to-br from-chalet-charcoal to-chalet-wood p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-chalet-gold/20 flex items-center justify-center mx-auto mb-4">
+              <UtensilsCrossed className="w-7 h-7 text-chalet-gold" />
             </div>
-
+            <DialogTitle className="text-2xl font-light text-chalet-cream">
+              Table <span className="font-semibold">{selectedTable?.numero}</span>
+            </DialogTitle>
+            <p className="text-chalet-cream/60 text-sm mt-2">
+              Capacité : {selectedTable?.capacite} personnes
+            </p>
+          </div>
+          
+          <div className="p-6 space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nom complet *</Label>
+                <Label className="text-chalet-charcoal text-sm font-medium">Nom complet</Label>
                 <Input 
                   placeholder="Votre nom"
                   value={reservationNom}
                   onChange={(e) => setReservationNom(e.target.value)}
+                  className="h-12 rounded-xl border-chalet-beige focus:border-chalet-gold focus:ring-chalet-gold/20"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Téléphone *</Label>
+                <Label className="text-chalet-charcoal text-sm font-medium">Téléphone</Label>
                 <Input 
                   placeholder="0X XX XX XX XX"
                   value={reservationTel}
                   onChange={(e) => setReservationTel(e.target.value)}
+                  className="h-12 rounded-xl border-chalet-beige focus:border-chalet-gold focus:ring-chalet-gold/20"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Email (optionnel)</Label>
+              <Label className="text-chalet-charcoal text-sm font-medium">Email <span className="text-chalet-wood-light font-normal">(optionnel)</span></Label>
               <Input 
                 type="email"
                 placeholder="email@exemple.com"
                 value={reservationEmail}
                 onChange={(e) => setReservationEmail(e.target.value)}
+                className="h-12 rounded-xl border-chalet-beige focus:border-chalet-gold focus:ring-chalet-gold/20"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Date *</Label>
+                <Label className="text-chalet-charcoal text-sm font-medium">Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className="w-full h-12 justify-start text-left font-normal rounded-xl border-chalet-beige hover:border-chalet-gold">
+                      <CalendarIcon className="mr-2 h-4 w-4 text-chalet-warm" />
                       {reservationDate ? format(reservationDate, "dd/MM/yyyy", { locale: fr }) : "Choisir"}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 rounded-xl" align="start">
                     <Calendar
                       mode="single"
                       selected={reservationDate}
                       onSelect={setReservationDate}
                       disabled={(date) => date < new Date()}
-                      className="pointer-events-auto"
+                      className="pointer-events-auto rounded-xl"
                     />
                   </PopoverContent>
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label>Heure *</Label>
+                <Label className="text-chalet-charcoal text-sm font-medium">Heure</Label>
                 <Select value={reservationHeure} onValueChange={setReservationHeure}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-chalet-beige focus:border-chalet-gold">
                     <SelectValue placeholder="Heure" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {HEURES.map(h => (
                       <SelectItem key={h} value={h}>{h}</SelectItem>
                     ))}
@@ -485,15 +524,15 @@ export default function RestoPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Nombre de personnes</Label>
+              <Label className="text-chalet-charcoal text-sm font-medium">Nombre de personnes</Label>
               <Select 
                 value={reservationPersonnes.toString()} 
                 onValueChange={(v) => setReservationPersonnes(parseInt(v))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl border-chalet-beige focus:border-chalet-gold">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {[...Array(selectedTable?.capacite || 4)].map((_, i) => (
                     <SelectItem key={i+1} value={(i+1).toString()}>{i+1} personne{i > 0 ? 's' : ''}</SelectItem>
                   ))}
@@ -504,7 +543,7 @@ export default function RestoPage() {
             <Button 
               onClick={handleReservation}
               disabled={submitting}
-              className="w-full bg-chalet-gold hover:bg-chalet-gold/90 text-chalet-charcoal font-semibold"
+              className="w-full h-14 bg-gradient-to-r from-chalet-gold to-chalet-gold-muted hover:from-chalet-gold/90 hover:to-chalet-gold text-chalet-charcoal font-semibold rounded-xl transition-all text-base"
             >
               {submitting ? "Envoi..." : "Confirmer la réservation"}
             </Button>
@@ -553,6 +592,6 @@ export default function RestoPage() {
         date={reservationDate ? format(reservationDate, 'dd/MM/yyyy', { locale: fr }) : ''}
         type="resto"
       />
-    </Layout>
+    </div>
   );
 }

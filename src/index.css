@@ -42,17 +42,21 @@
     --nature-shadow: 0 10px 40px -10px hsl(122 86% 16% / 0.2);
     --nature-shadow-lg: 0 25px 50px -12px hsl(122 86% 16% / 0.25);
 
-    /* Chalet prestige tokens - warm wood tones */
-    --chalet-wood: 25 40% 25%;
-    --chalet-wood-light: 30 30% 40%;
-    --chalet-cream: 40 30% 96%;
-    --chalet-beige: 35 25% 85%;
-    --chalet-gold: 42 80% 50%;
-    --chalet-gold-muted: 40 40% 70%;
-    --chalet-charcoal: 30 15% 15%;
-    --chalet-gradient: linear-gradient(135deg, hsl(25, 40%, 20%) 0%, hsl(30, 35%, 30%) 100%);
-    --chalet-gradient-light: linear-gradient(135deg, hsl(40, 30%, 96%) 0%, hsl(35, 25%, 90%) 100%);
-    --chalet-shadow: 0 10px 40px -10px hsl(25 40% 15% / 0.3);
+    /* Chalet prestige tokens - soft modern elegance */
+    --chalet-wood: 24 25% 22%;
+    --chalet-wood-light: 25 18% 45%;
+    --chalet-cream: 38 40% 97%;
+    --chalet-beige: 32 25% 88%;
+    --chalet-gold: 38 65% 55%;
+    --chalet-gold-muted: 35 35% 75%;
+    --chalet-charcoal: 25 20% 12%;
+    --chalet-warm: 28 35% 35%;
+    --chalet-sage: 145 15% 65%;
+    --chalet-rose: 15 45% 85%;
+    --chalet-gradient: linear-gradient(135deg, hsl(24, 25%, 18%) 0%, hsl(25, 20%, 28%) 100%);
+    --chalet-gradient-soft: linear-gradient(180deg, hsl(38, 40%, 97%) 0%, hsl(32, 25%, 92%) 100%);
+    --chalet-shadow: 0 8px 32px -8px hsl(24 25% 15% / 0.15);
+    --chalet-shadow-lg: 0 24px 48px -12px hsl(24 25% 15% / 0.2);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -131,12 +135,16 @@
     background: var(--chalet-gradient);
   }
 
-  .chalet-gradient-light {
-    background: var(--chalet-gradient-light);
+  .chalet-gradient-soft {
+    background: var(--chalet-gradient-soft);
   }
 
   .chalet-shadow {
     box-shadow: var(--chalet-shadow);
+  }
+
+  .chalet-shadow-lg {
+    box-shadow: var(--chalet-shadow-lg);
   }
 
   .chalet-bg {
