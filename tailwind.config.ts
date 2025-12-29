@@ -68,6 +68,9 @@ export default {
           gold: "hsl(var(--chalet-gold))",
           "gold-muted": "hsl(var(--chalet-gold-muted))",
           charcoal: "hsl(var(--chalet-charcoal))",
+          warm: "hsl(var(--chalet-warm))",
+          sage: "hsl(var(--chalet-sage))",
+          rose: "hsl(var(--chalet-rose))",
         },
       },
       borderRadius: {
