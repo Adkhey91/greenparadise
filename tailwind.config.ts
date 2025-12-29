@@ -60,6 +60,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        chalet: {
+          wood: "hsl(var(--chalet-wood))",
+          "wood-light": "hsl(var(--chalet-wood-light))",
+          cream: "hsl(var(--chalet-cream))",
+          beige: "hsl(var(--chalet-beige))",
+          gold: "hsl(var(--chalet-gold))",
+          "gold-muted": "hsl(var(--chalet-gold-muted))",
+          charcoal: "hsl(var(--chalet-charcoal))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
