@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Trees,
-  UtensilsCrossed
+  UtensilsCrossed,
+  QrCode,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,9 @@ const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Vue d'ensemble", end: true },
   { to: "/admin/garden", icon: Trees, label: "Gestion Jardin" },
   { to: "/admin/resto", icon: UtensilsCrossed, label: "Gestion Restaurant" },
-  { to: "/admin/reservations", icon: Calendar, label: "Réservations Jardin" },
+  { to: "/admin/reservations", icon: Calendar, label: "Réservations" },
+  { to: "/admin/checkin", icon: QrCode, label: "Check-in Entrée" },
+  { to: "/admin/walkin", icon: UserPlus, label: "Walk-in / Sur place" },
   { to: "/admin/content", icon: Leaf, label: "Contenu Site" },
   { to: "/admin/messages", icon: MessageSquare, label: "Messages" },
   { to: "/admin/settings", icon: Settings, label: "Paramètres" },

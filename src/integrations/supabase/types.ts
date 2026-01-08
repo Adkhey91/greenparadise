@@ -174,6 +174,8 @@ export type Database = {
       }
       reservations: {
         Row: {
+          checked_in_at: string | null
+          confirmed_at: string | null
           created_at: string
           date_reservation: string
           email: string | null
@@ -182,10 +184,18 @@ export type Database = {
           message: string | null
           nom: string
           nombre_personnes: number | null
+          paid_at: string | null
+          payment_status: string | null
+          reservation_number: string | null
+          secure_token: string | null
           statut: string | null
+          table_id: string | null
           telephone: string
+          total_price: number | null
         }
         Insert: {
+          checked_in_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
           date_reservation: string
           email?: string | null
@@ -194,10 +204,18 @@ export type Database = {
           message?: string | null
           nom: string
           nombre_personnes?: number | null
+          paid_at?: string | null
+          payment_status?: string | null
+          reservation_number?: string | null
+          secure_token?: string | null
           statut?: string | null
+          table_id?: string | null
           telephone: string
+          total_price?: number | null
         }
         Update: {
+          checked_in_at?: string | null
+          confirmed_at?: string | null
           created_at?: string
           date_reservation?: string
           email?: string | null
@@ -206,8 +224,14 @@ export type Database = {
           message?: string | null
           nom?: string
           nombre_personnes?: number | null
+          paid_at?: string | null
+          payment_status?: string | null
+          reservation_number?: string | null
+          secure_token?: string | null
           statut?: string | null
+          table_id?: string | null
           telephone?: string
+          total_price?: number | null
         }
         Relationships: []
       }
@@ -377,6 +401,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_reservation_number: { Args: never; Returns: string }
+      generate_secure_token: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

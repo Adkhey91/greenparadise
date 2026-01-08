@@ -2,12 +2,11 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft, RefreshCw, Sparkles, Crown, Heart } from "lucide-react";
+import { Calendar, Users, Clock, MapPin, Phone, CheckCircle, Flame, Gamepad2, TreePine, Armchair, Star, ArrowLeft, RefreshCw, Sparkles, Crown, Heart, Copy, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { PaymentModal } from "@/components/PaymentModal";
-import { PaymentSuccessModal } from "@/components/PaymentSuccessModal";
+import { Link } from "react-router-dom";
 
 interface Formula {
   id: string;
@@ -64,14 +63,10 @@ export default function ReservationPage() {
   const { toast } = useToast();
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<"formules" | "form">("formules");
+  const [step, setStep] = useState<"formules" | "form" | "success">("formules");
   const [selectedFormule, setSelectedFormule] = useState<Formula | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
-  const [confirmationCode, setConfirmationCode] = useState("");
+  const [reservationNumber, setReservationNumber] = useState("");
   const [formData, setFormData] = useState({
     nom: "",
     telephone: "",
@@ -137,7 +132,7 @@ export default function ReservationPage() {
     const validatedData = validation.data;
     setIsSubmitting(true);
     
-    // Create reservation with pending payment status
+    // Create reservation with pending status (free reservation)
     const { data, error } = await supabase.from("reservations").insert({
       nom: validatedData.nom,
       telephone: validatedData.telephone,
@@ -146,8 +141,10 @@ export default function ReservationPage() {
       formule: validatedData.formule,
       nombre_personnes: validatedData.nombrePersonnes ? parseInt(validatedData.nombrePersonnes) : null,
       message: validatedData.message || null,
-      statut: 'paiement_en_attente'
-    }).select('id').single();
+      statut: 'en_attente',
+      total_price: selectedFormule?.prix_dzd || 0,
+      payment_status: 'unpaid'
+    }).select('reservation_number').single();
 
     setIsSubmitting(false);
 
@@ -160,16 +157,23 @@ export default function ReservationPage() {
       return;
     }
 
-    // Store reservation ID and open payment modal
-    setPendingReservationId(data.id);
-    setShowPaymentModal(true);
+    // Store reservation number and show success
+    setReservationNumber(data.reservation_number);
+    setStep("success");
   };
 
-  const handlePaymentSuccess = (code: string) => {
-    setConfirmationCode(code);
-    setShowPaymentModal(false);
-    setShowSuccessModal(true);
-    // Reset form
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(reservationNumber);
+    toast({
+      title: "Copié !",
+      description: "Le numéro de réservation a été copié",
+    });
+  };
+
+  const handleNewReservation = () => {
+    setStep("formules");
+    setSelectedFormule(null);
+    setReservationNumber("");
     setFormData({
       nom: "",
       telephone: "",
@@ -179,47 +183,88 @@ export default function ReservationPage() {
       nombrePersonnes: "",
       message: "",
     });
-    setPendingReservationId(null);
   };
 
-  const handleSuccessClose = () => {
-    setShowSuccessModal(false);
-    setConfirmationCode("");
-    setIsSuccess(true);
-  };
-
-  const handleNewReservation = () => {
-    setIsSuccess(false);
-    setStep("formules");
-    setSelectedFormule(null);
-  };
-
-  if (isSuccess) {
+  // Success screen
+  if (step === "success") {
     return (
       <Layout>
         <section className="py-24 lg:py-32">
           <div className="container mx-auto container-padding text-center">
-            <div className="max-w-md mx-auto space-y-6 animate-fade-in">
+            <div className="max-w-lg mx-auto space-y-8 animate-fade-in">
               <div className="w-20 h-20 mx-auto rounded-full nature-gradient flex items-center justify-center">
                 <CheckCircle className="w-10 h-10 text-primary-foreground" />
               </div>
-              <h1 className="text-3xl font-bold text-foreground">
-                Réservation réussie !
-              </h1>
-              <div className="bg-primary/10 rounded-2xl p-6 border border-primary/20">
-                <p className="text-lg font-medium text-foreground mb-2">
-                  📞 On va vous contacter dans 5 minutes
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Notre équipe vous appellera pour confirmer votre réservation et répondre à toutes vos questions.
+              
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-foreground">
+                  Demande envoyée !
+                </h1>
+                <p className="text-muted-foreground">
+                  Votre demande de réservation est en attente de confirmation par notre équipe.
                 </p>
               </div>
-              <p className="text-muted-foreground text-sm">
-                Merci de garder votre téléphone à portée de main.
-              </p>
-              <Button variant="nature" onClick={handleNewReservation}>
-                Nouvelle réservation
-              </Button>
+
+              {/* Reservation Number */}
+              <div className="bg-primary/10 rounded-2xl p-6 border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-2">Votre numéro de réservation</p>
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-3xl font-black text-primary tracking-widest">
+                    {reservationNumber}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={copyToClipboard}
+                    className="h-10 w-10"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Status info */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                  <Clock className="w-5 h-5" />
+                  <span className="font-medium">En attente de confirmation</span>
+                </div>
+                <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">
+                  Nous confirmerons votre réservation sous 24h
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-muted/50 rounded-xl p-5 text-left space-y-3">
+                <h3 className="font-semibold text-foreground">📱 Important</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    Faites une capture d'écran de votre numéro de réservation
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    Revenez sur le site pour retrouver votre ticket une fois confirmé
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    Le ticket avec QR code sera disponible après confirmation
+                  </li>
+                </ul>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button variant="nature" asChild>
+                  <Link to="/ticket" className="gap-2">
+                    <Search className="w-4 h-4" />
+                    Retrouver ma réservation
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={handleNewReservation}>
+                  Nouvelle réservation
+                </Button>
+              </div>
             </div>
           </div>
         </section>
@@ -249,11 +294,21 @@ export default function ReservationPage() {
         <section className="py-16 lg:py-24 bg-muted/50">
           <div className="container mx-auto container-padding text-center space-y-6">
             <h1 className="text-4xl sm:text-5xl font-bold text-foreground animate-fade-in">
-              Réservation
+              Réservation Gratuite
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              Choisissez la formule qui correspond à vos besoins et profitez d'un moment unique à Green Paradise.
+              Choisissez votre formule et réservez gratuitement. Paiement sur place uniquement.
             </p>
+            
+            {/* Quick lookup link */}
+            <div className="pt-4">
+              <Button variant="outline" asChild className="gap-2">
+                <Link to="/ticket">
+                  <Search className="w-4 h-4" />
+                  Retrouver ma réservation
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -424,7 +479,7 @@ export default function ReservationPage() {
               Réserver {selectedFormule?.nom}
             </h1>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              {selectedFormule?.prix_dzd} DA • {selectedFormule?.nb_personnes} personnes
+              {selectedFormule?.prix_dzd} DA • {selectedFormule?.nb_personnes} personnes • Paiement sur place
             </p>
           </div>
         </div>
@@ -526,6 +581,7 @@ export default function ReservationPage() {
                     <div className="text-right">
                       <span className="text-xl font-bold text-primary">{selectedFormule?.prix_dzd}</span>
                       <span className="text-muted-foreground ml-1">DA</span>
+                      <p className="text-xs text-muted-foreground">À payer sur place</p>
                     </div>
                   </div>
                 </div>
@@ -549,8 +605,12 @@ export default function ReservationPage() {
                   className="w-full"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Envoi en cours..." : "Envoyer la demande"}
+                  {isSubmitting ? "Envoi en cours..." : "Envoyer la demande de réservation"}
                 </Button>
+                
+                <p className="text-xs text-center text-muted-foreground">
+                  Réservation gratuite • Confirmation sous 24h • Paiement sur place
+                </p>
               </form>
             </div>
 
@@ -593,59 +653,35 @@ export default function ReservationPage() {
 
               <div className="bg-primary/5 rounded-3xl p-6 lg:p-8 border border-primary/20">
                 <h3 className="text-xl font-semibold text-foreground mb-4">
-                  Bon à savoir
+                  Comment ça marche ?
                 </h3>
-                <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    Réservation recommandée les week-ends
+                <ol className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                    <span>Remplissez le formulaire de réservation</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    Confirmation par téléphone sous 24h
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                    <span>Recevez votre numéro de réservation</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    Annulation gratuite jusqu'à 24h avant
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+                    <span>Attendez la confirmation par notre équipe</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    Parking gratuit disponible
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
+                    <span>Récupérez votre ticket QR sur le site</span>
                   </li>
-                </ul>
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center flex-shrink-0">5</span>
+                    <span>Présentez le QR code à l'entrée et payez sur place</span>
+                  </li>
+                </ol>
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Payment Modal */}
-      {pendingReservationId && selectedFormule && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          onSuccess={handlePaymentSuccess}
-          reservationData={{
-            id: pendingReservationId,
-            type: 'jardin',
-            amount: selectedFormule.prix_dzd,
-            customerName: formData.nom,
-            customerPhone: formData.telephone,
-            customerEmail: formData.email || undefined,
-            date: formData.date,
-            formule: selectedFormule.nom,
-          }}
-        />
-      )}
-
-      {/* Success Modal */}
-      <PaymentSuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleSuccessClose}
-        confirmationCode={confirmationCode}
-        date={formData.date}
-        type="jardin"
-      />
     </Layout>
   );
 }
