@@ -15,6 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,10 +42,18 @@ import {
   List,
   Lock,
   LockOpen,
-  ImageIcon,
   RefreshCw,
-  Users
+  TreePine,
+  UtensilsCrossed,
+  Building2
 } from "lucide-react";
+
+interface Venue {
+  id: string;
+  code: string;
+  name: string;
+  is_reservable: boolean;
+}
 
 interface Formula {
   id: string;
@@ -50,6 +65,7 @@ interface Formula {
   actif: boolean;
   photo_url: string | null;
   photo_filename: string | null;
+  venue_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,16 +76,20 @@ interface ParkTable {
   nom_ou_numero: string;
   capacite: number;
   statut: 'libre' | 'occupee' | 'reservee' | 'hors_service';
+  venue_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
-const AVAILABLE_TAGS = ['Table de jardin', 'Accès espace vert', 'Parasol inclus', 'Table', 'Chaises', 'wifi', 'jeu', 'piscine', 'ombre', 'vue'];
+const GARDEN_TAGS = ['Table de jardin', 'Accès espace vert', 'Parasol inclus', 'Table', 'Chaises', 'wifi', 'jeu', 'piscine', 'ombre', 'vue'];
+const RESTO_TAGS = ['Vue panoramique', 'Terrasse', 'Coin intime', 'Près du feu', 'Table ronde', 'Grande tablée', 'Romantique'];
 
 export default function GardenManagementPage() {
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [tables, setTables] = useState<ParkTable[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedVenueCode, setSelectedVenueCode] = useState<string>("GARDEN");
   const [activeTab, setActiveTab] = useState<'formulas' | 'tables'>('formulas');
   
   // Formula dialog
@@ -83,6 +103,7 @@ export default function GardenManagementPage() {
     tags: [] as string[],
     actif: true,
     photo_url: '',
+    venue_id: '',
   });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -107,8 +128,13 @@ export default function GardenManagementPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchFormulas(), fetchTables()]);
+    await Promise.all([fetchVenues(), fetchFormulas(), fetchTables()]);
     setLoading(false);
+  };
+
+  const fetchVenues = async () => {
+    const { data } = await supabase.from('venues').select('*').eq('is_reservable', true).order('code');
+    if (data) setVenues(data);
   };
 
   const fetchFormulas = async () => {
@@ -123,6 +149,19 @@ export default function GardenManagementPage() {
     setTables((data || []) as ParkTable[]);
   };
 
+  const selectedVenue = venues.find(v => v.code === selectedVenueCode);
+  const venueFormulas = formulas.filter(f => {
+    const venue = venues.find(v => v.id === f.venue_id);
+    return venue?.code === selectedVenueCode;
+  });
+  const venueTables = tables.filter(t => {
+    const formula = formulas.find(f => f.id === t.formule_id);
+    const venue = venues.find(v => v.id === formula?.venue_id);
+    return venue?.code === selectedVenueCode;
+  });
+
+  const availableTags = selectedVenueCode === 'RESTAURANT' ? RESTO_TAGS : GARDEN_TAGS;
+
   const openFormulaDialog = (formula?: Formula) => {
     if (formula) {
       setEditingFormula(formula);
@@ -134,10 +173,20 @@ export default function GardenManagementPage() {
         tags: formula.tags || [],
         actif: formula.actif,
         photo_url: formula.photo_url || '',
+        venue_id: formula.venue_id || '',
       });
     } else {
       setEditingFormula(null);
-      setFormulaForm({ nom: '', description_courte: '', prix_dzd: 0, nb_personnes: 4, tags: [], actif: true, photo_url: '' });
+      setFormulaForm({ 
+        nom: '', 
+        description_courte: '', 
+        prix_dzd: selectedVenueCode === 'RESTAURANT' ? 3000 : 1500, 
+        nb_personnes: selectedVenueCode === 'RESTAURANT' ? 2 : 4, 
+        tags: [], 
+        actif: true, 
+        photo_url: '',
+        venue_id: selectedVenue?.id || '',
+      });
     }
     setFormulaDialogOpen(true);
   };
@@ -165,6 +214,9 @@ export default function GardenManagementPage() {
 
   const saveFormula = async () => {
     if (!formulaForm.nom.trim()) { toast.error('Nom requis'); return; }
+    const venueId = formulaForm.venue_id || selectedVenue?.id;
+    if (!venueId) { toast.error('Venue requis'); return; }
+    
     const data = {
       nom: formulaForm.nom.trim(),
       description_courte: formulaForm.description_courte.trim() || null,
@@ -174,6 +226,7 @@ export default function GardenManagementPage() {
       actif: formulaForm.actif,
       photo_url: formulaForm.photo_url.trim() || null,
       photo_filename: formulaForm.photo_url ? formulaForm.photo_url.split('/').pop() : null,
+      venue_id: venueId,
     };
     if (editingFormula) {
       const { error } = await supabase.from('formulas').update(data).eq('id', editingFormula.id);
@@ -220,6 +273,7 @@ export default function GardenManagementPage() {
         nom_ou_numero: `Table n°${startNum + i}`,
         capacite: addingTablesForFormula.nb_personnes,
         statut: 'libre',
+        venue_id: addingTablesForFormula.venue_id,
       });
     }
     const { error } = await supabase.from('park_tables').insert(newTables);
@@ -281,17 +335,58 @@ export default function GardenManagementPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Gestion du Jardin</h1>
+          <h1 className="text-2xl font-bold text-foreground">Gestion des Formules</h1>
           <p className="text-muted-foreground">
-            Gérez vos formules et tables • {formulas.length} formules • {tables.length} tables
+            Gérez vos formules et tables par lieu
           </p>
         </div>
-        <Button onClick={() => openFormulaDialog()} className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          Nouvelle formule
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Venue Selector */}
+          <Select value={selectedVenueCode} onValueChange={setSelectedVenueCode}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {venues.map(venue => (
+                <SelectItem key={venue.code} value={venue.code}>
+                  <div className="flex items-center gap-2">
+                    {venue.code === 'RESTAURANT' ? (
+                      <UtensilsCrossed className="w-4 h-4" />
+                    ) : (
+                      <TreePine className="w-4 h-4" />
+                    )}
+                    {venue.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => openFormulaDialog()} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Nouvelle formule
+          </Button>
+        </div>
+      </div>
+
+      {/* Venue Stats */}
+      <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+          selectedVenueCode === 'RESTAURANT' ? 'bg-chalet-gold/20' : 'bg-primary/10'
+        }`}>
+          {selectedVenueCode === 'RESTAURANT' ? (
+            <UtensilsCrossed className="w-6 h-6 text-chalet-gold" />
+          ) : (
+            <TreePine className="w-6 h-6 text-primary" />
+          )}
+        </div>
+        <div>
+          <h2 className="font-semibold text-lg">{selectedVenue?.name}</h2>
+          <p className="text-sm text-muted-foreground">
+            {venueFormulas.length} formule(s) • {venueTables.length} table(s)
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -299,23 +394,37 @@ export default function GardenManagementPage() {
         <TabsList className="bg-muted/50">
           <TabsTrigger value="formulas" className="gap-2">
             <LayoutGrid className="w-4 h-4" />
-            Formules
+            Formules ({venueFormulas.length})
           </TabsTrigger>
           <TabsTrigger value="tables" className="gap-2">
             <List className="w-4 h-4" />
-            Tableau des tables
+            Tables ({venueTables.length})
           </TabsTrigger>
         </TabsList>
 
         {/* Formulas Tab */}
         <TabsContent value="formulas" className="mt-6">
-          {formulas.length === 0 ? (
+          {venueFormulas.length === 0 ? (
             <Card className="p-12 text-center border-dashed">
-              <p className="text-muted-foreground">Aucune formule. Créez-en une !</p>
+              <div className="flex flex-col items-center gap-4">
+                {selectedVenueCode === 'RESTAURANT' ? (
+                  <UtensilsCrossed className="w-12 h-12 text-muted-foreground" />
+                ) : (
+                  <TreePine className="w-12 h-12 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-medium">Aucune formule pour {selectedVenue?.name}</p>
+                  <p className="text-sm text-muted-foreground">Créez votre première formule</p>
+                </div>
+                <Button onClick={() => openFormulaDialog()} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Ajouter une formule
+                </Button>
+              </div>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {formulas.map(formula => {
+              {venueFormulas.map(formula => {
                 const stats = getTableStats(formula.id);
                 const formulaTables = tables.filter(t => t.formule_id === formula.id);
                 
@@ -326,8 +435,14 @@ export default function GardenManagementPage() {
                       {formula.photo_url ? (
                         <img src={formula.photo_url} alt={formula.nom} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <span className="text-lg">Aucune photo</span>
+                        <div className={`w-full h-full flex items-center justify-center ${
+                          selectedVenueCode === 'RESTAURANT' ? 'bg-chalet-warm/20' : 'bg-emerald-50'
+                        }`}>
+                          {selectedVenueCode === 'RESTAURANT' ? (
+                            <UtensilsCrossed className="w-12 h-12 text-chalet-warm/50" />
+                          ) : (
+                            <TreePine className="w-12 h-12 text-emerald-300" />
+                          )}
                         </div>
                       )}
                       <div className="absolute top-3 right-3">
@@ -335,25 +450,40 @@ export default function GardenManagementPage() {
                           {formula.nb_personnes} pers.
                         </Badge>
                       </div>
+                      {!formula.actif && (
+                        <div className="absolute top-3 left-3">
+                          <Badge variant="destructive">Inactif</Badge>
+                        </div>
+                      )}
                     </div>
 
                     <CardContent className="p-4 space-y-4">
                       {/* Info */}
                       <div>
                         <h3 className="font-semibold text-foreground">{formula.nom}</h3>
-                        <p className="text-lg font-bold text-primary">
+                        <p className={`text-lg font-bold ${selectedVenueCode === 'RESTAURANT' ? 'text-chalet-gold' : 'text-primary'}`}>
                           {formula.prix_dzd.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">DA</span>
                         </p>
+                        {formula.description_courte && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{formula.description_courte}</p>
+                        )}
                       </div>
 
                       {/* Tags */}
                       {formula.tags && formula.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {formula.tags.map(tag => (
-                            <Badge key={tag} variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          {formula.tags.slice(0, 3).map(tag => (
+                            <Badge key={tag} variant="secondary" className={`text-xs ${
+                              selectedVenueCode === 'RESTAURANT' 
+                                ? 'bg-chalet-gold/10 text-chalet-charcoal' 
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}>
                               {tag}
                             </Badge>
                           ))}
+                          {formula.tags.length > 3 && (
+                            <Badge variant="outline" className="text-xs">+{formula.tags.length - 3}</Badge>
+                          )}
                         </div>
                       )}
 
@@ -379,11 +509,10 @@ export default function GardenManagementPage() {
                         {formulaTables.length === 0 ? (
                           <p className="text-sm text-muted-foreground italic">Aucune table</p>
                         ) : (
-                          <div className="space-y-1 max-h-48 overflow-y-auto">
-                            {formulaTables.map(table => (
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {formulaTables.slice(0, 5).map(table => (
                               <div key={table.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
                                 <div className="flex items-center gap-2">
-                                  <LayoutGrid className="w-4 h-4 text-muted-foreground" />
                                   <span className="font-medium text-sm">{table.nom_ou_numero}</span>
                                   <span className={`text-xs ${getStatusColor(table.statut)}`}>
                                     {getStatusLabel(table.statut)}
@@ -394,45 +523,27 @@ export default function GardenManagementPage() {
                                     <Button 
                                       size="sm" 
                                       variant="ghost" 
-                                      className="h-7 text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      className="h-6 text-xs gap-1 text-amber-600 hover:text-amber-700"
                                       onClick={() => updateTableStatus(table.id, 'occupee')}
                                     >
                                       <Lock className="w-3 h-3" />
-                                      Occuper
                                     </Button>
                                   ) : (
                                     <Button 
                                       size="sm" 
                                       variant="ghost" 
-                                      className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                      className="h-6 text-xs gap-1 text-emerald-600 hover:text-emerald-700"
                                       onClick={() => updateTableStatus(table.id, 'libre')}
                                     >
                                       <LockOpen className="w-3 h-3" />
-                                      Libérer
                                     </Button>
                                   )}
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
-                                        <Trash2 className="w-3 h-3" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Supprimer cette table ?</AlertDialogTitle>
-                                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteTable(table.id)} className="bg-destructive">
-                                          Supprimer
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
                                 </div>
                               </div>
                             ))}
+                            {formulaTables.length > 5 && (
+                              <p className="text-xs text-muted-foreground text-center">+{formulaTables.length - 5} autres</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -471,7 +582,7 @@ export default function GardenManagementPage() {
                       </div>
 
                       <Button 
-                        className="w-full gap-2 bg-emerald-500 hover:bg-emerald-600"
+                        className={`w-full gap-2 ${selectedVenueCode === 'RESTAURANT' ? 'bg-chalet-charcoal hover:bg-chalet-wood' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                         onClick={() => openAddTablesDialog(formula)}
                       >
                         <Plus className="w-4 h-4" />
@@ -489,83 +600,79 @@ export default function GardenManagementPage() {
         <TabsContent value="tables" className="mt-6">
           <Card>
             <CardContent className="p-0">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">Table</th>
-                    <th className="text-left p-4 font-medium">Formule</th>
-                    <th className="text-left p-4 font-medium">Capacité</th>
-                    <th className="text-left p-4 font-medium">Statut</th>
-                    <th className="text-right p-4 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tables.map(table => {
-                    const formula = formulas.find(f => f.id === table.formule_id);
-                    return (
-                      <tr key={table.id} className="border-t">
-                        <td className="p-4 font-medium">{table.nom_ou_numero}</td>
-                        <td className="p-4 text-muted-foreground">{formula?.nom || '-'}</td>
-                        <td className="p-4">{table.capacite} pers.</td>
-                        <td className="p-4">
-                          <Badge 
-                            variant="secondary" 
-                            className={`${
-                              table.statut === 'libre' ? 'bg-emerald-100 text-emerald-700' :
-                              table.statut === 'occupee' ? 'bg-amber-100 text-amber-700' :
-                              table.statut === 'reservee' ? 'bg-rose-100 text-rose-700' :
-                              'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {getStatusLabel(table.statut)}
-                          </Badge>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-1">
-                            {table.statut === 'libre' ? (
-                              <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'occupee')}>
-                                Occuper
-                              </Button>
-                            ) : (
-                              <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'libre')}>
-                                Libérer
-                              </Button>
-                            )}
-                            <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'reservee')}>
-                              Réserver
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="ghost" className="text-destructive">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Supprimer ?</AlertDialogTitle>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteTable(table.id)} className="bg-destructive">
-                                    Supprimer
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {tables.length === 0 && (
+              {venueTables.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-muted-foreground">Aucune table. Ajoutez des tables via les formules.</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                        Aucune table
-                      </td>
+                      <th className="text-left p-4 font-medium">Table</th>
+                      <th className="text-left p-4 font-medium">Formule</th>
+                      <th className="text-left p-4 font-medium">Capacité</th>
+                      <th className="text-left p-4 font-medium">Statut</th>
+                      <th className="text-right p-4 font-medium">Actions</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {venueTables.map(table => {
+                      const formula = formulas.find(f => f.id === table.formule_id);
+                      return (
+                        <tr key={table.id} className="border-t">
+                          <td className="p-4 font-medium">{table.nom_ou_numero}</td>
+                          <td className="p-4 text-muted-foreground">{formula?.nom || '-'}</td>
+                          <td className="p-4">{table.capacite} pers.</td>
+                          <td className="p-4">
+                            <Badge 
+                              variant="secondary" 
+                              className={`${
+                                table.statut === 'libre' ? 'bg-emerald-100 text-emerald-700' :
+                                table.statut === 'occupee' ? 'bg-amber-100 text-amber-700' :
+                                table.statut === 'reservee' ? 'bg-rose-100 text-rose-700' :
+                                'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {getStatusLabel(table.statut)}
+                            </Badge>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1">
+                              {table.statut === 'libre' ? (
+                                <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'occupee')}>
+                                  Occuper
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="ghost" onClick={() => updateTableStatus(table.id, 'libre')}>
+                                  Libérer
+                                </Button>
+                              )}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="text-destructive">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Supprimer ?</AlertDialogTitle>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteTable(table.id)} className="bg-destructive">
+                                      Supprimer
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -575,72 +682,79 @@ export default function GardenManagementPage() {
       <Dialog open={formulaDialogOpen} onOpenChange={setFormulaDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingFormula ? 'Modifier' : 'Nouvelle'} formule</DialogTitle>
+            <DialogTitle>
+              {editingFormula ? 'Modifier la formule' : `Nouvelle formule - ${selectedVenue?.name}`}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Photo */}
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Photo</Label>
-              <div className="relative h-32 bg-muted rounded-lg overflow-hidden">
-                {formulaForm.photo_url ? (
-                  <img src={formulaForm.photo_url} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
-                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white/20 backdrop-blur rounded-lg text-white text-sm">
-                    <Upload className="w-4 h-4" />
-                    {uploadingPhoto ? 'Envoi...' : 'Changer'}
-                  </div>
-                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
-                </label>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nom *</Label>
-                <Input 
-                  value={formulaForm.nom} 
-                  onChange={(e) => setFormulaForm(p => ({ ...p, nom: e.target.value }))}
-                  placeholder="Essentielle"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Prix (DA)</Label>
-                <Input 
-                  type="number"
-                  value={formulaForm.prix_dzd} 
-                  onChange={(e) => setFormulaForm(p => ({ ...p, prix_dzd: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Nombre de personnes</Label>
+              <Label>Nom *</Label>
               <Input 
-                type="number"
-                value={formulaForm.nb_personnes} 
-                onChange={(e) => setFormulaForm(p => ({ ...p, nb_personnes: parseInt(e.target.value) || 1 }))}
+                value={formulaForm.nom} 
+                onChange={e => setFormulaForm(prev => ({ ...prev, nom: e.target.value }))}
+                placeholder={selectedVenueCode === 'RESTAURANT' ? "Ex: Menu Découverte" : "Ex: Formule Famille"}
               />
             </div>
-
+            
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea 
                 value={formulaForm.description_courte} 
-                onChange={(e) => setFormulaForm(p => ({ ...p, description_courte: e.target.value }))}
+                onChange={e => setFormulaForm(prev => ({ ...prev, description_courte: e.target.value }))}
+                placeholder="Description courte..."
                 rows={2}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prix (DA) *</Label>
+                <Input 
+                  type="number"
+                  value={formulaForm.prix_dzd} 
+                  onChange={e => setFormulaForm(prev => ({ ...prev, prix_dzd: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nb personnes *</Label>
+                <Input 
+                  type="number"
+                  min={1}
+                  value={formulaForm.nb_personnes} 
+                  onChange={e => setFormulaForm(prev => ({ ...prev, nb_personnes: parseInt(e.target.value) || 1 }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Photo</Label>
+              {formulaForm.photo_url && (
+                <img src={formulaForm.photo_url} alt="Preview" className="w-full h-32 object-cover rounded-lg mb-2" />
+              )}
+              <div className="flex gap-2">
+                <Input 
+                  value={formulaForm.photo_url} 
+                  onChange={e => setFormulaForm(prev => ({ ...prev, photo_url: e.target.value }))}
+                  placeholder="URL de la photo"
+                  className="flex-1"
+                />
+                <label className="cursor-pointer">
+                  <Button variant="outline" className="gap-2" disabled={uploadingPhoto} asChild>
+                    <span>
+                      <Upload className="w-4 h-4" />
+                      {uploadingPhoto ? '...' : 'Upload'}
+                    </span>
+                  </Button>
+                  <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                </label>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Tags</Label>
               <div className="flex flex-wrap gap-2">
-                {AVAILABLE_TAGS.map(tag => (
-                  <Badge
+                {availableTags.map(tag => (
+                  <Badge 
                     key={tag}
                     variant={formulaForm.tags.includes(tag) ? 'default' : 'outline'}
                     className="cursor-pointer"
@@ -650,6 +764,17 @@ export default function GardenManagementPage() {
                   </Badge>
                 ))}
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="actif" 
+                checked={formulaForm.actif}
+                onChange={e => setFormulaForm(prev => ({ ...prev, actif: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="actif">Formule active (visible sur le site)</Label>
             </div>
           </div>
           <DialogFooter>
@@ -665,26 +790,20 @@ export default function GardenManagementPage() {
           <DialogHeader>
             <DialogTitle>Ajouter des tables à "{addingTablesForFormula?.nom}"</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nombre de tables à ajouter</Label>
-              <Input 
-                type="number"
-                min="1"
-                max="50"
-                value={tableCount} 
-                onChange={(e) => setTableCount(parseInt(e.target.value) || 1)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Les tables seront numérotées automatiquement
-              </p>
-            </div>
+          <div className="py-4">
+            <Label>Nombre de tables à créer</Label>
+            <Input 
+              type="number" 
+              min={1} 
+              max={50}
+              value={tableCount} 
+              onChange={e => setTableCount(parseInt(e.target.value) || 1)}
+              className="mt-2"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTableDialogOpen(false)}>Annuler</Button>
-            <Button onClick={addTables} className="bg-emerald-500 hover:bg-emerald-600">
-              Ajouter {tableCount} table(s)
-            </Button>
+            <Button onClick={addTables}>Ajouter {tableCount} table(s)</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

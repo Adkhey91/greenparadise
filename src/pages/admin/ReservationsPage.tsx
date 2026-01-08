@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,16 +41,22 @@ import {
   Download,
   Filter,
   Phone,
-  Mail,
-  MessageSquare,
   CheckCircle,
   XCircle,
   QrCode,
   LogIn,
-  Wallet
+  Wallet,
+  TreePine,
+  UtensilsCrossed
 } from "lucide-react";
 import { format, parseISO, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
+
+interface Venue {
+  id: string;
+  code: string;
+  name: string;
+}
 
 interface AdminContextData {
   reservations: any[];
@@ -62,10 +68,21 @@ interface AdminContextData {
 export default function ReservationsPage() {
   const { reservations, refetch } = useOutletContext<AdminContextData>();
   const { toast } = useToast();
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [venueFilter, setVenueFilter] = useState<string>("all");
   const [formulaFilter, setFormulaFilter] = useState<string>("all");
   const [processing, setProcessing] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchVenues();
+  }, []);
+
+  const fetchVenues = async () => {
+    const { data } = await supabase.from('venues').select('*').eq('is_reservable', true);
+    if (data) setVenues(data);
+  };
 
   const confirmReservation = async (reservation: any) => {
     setProcessing(reservation.id);
@@ -152,18 +169,22 @@ export default function ReservationsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["N° Réservation", "Date", "Nom", "Téléphone", "Email", "Formule", "Personnes", "Statut", "Paiement"];
-    const rows = filteredReservations.map((r) => [
-      r.reservation_number || "",
-      format(parseISO(r.date_reservation), "dd/MM/yyyy"),
-      r.nom,
-      r.telephone,
-      r.email || "",
-      r.formule,
-      r.nombre_personnes || "",
-      r.statut || "en_attente",
-      r.payment_status || "unpaid",
-    ]);
+    const headers = ["N° Réservation", "Lieu", "Date", "Nom", "Téléphone", "Email", "Formule", "Personnes", "Statut", "Paiement"];
+    const rows = filteredReservations.map((r) => {
+      const venue = venues.find(v => v.id === r.venue_id);
+      return [
+        r.reservation_number || "",
+        venue?.name || "Jardin",
+        format(parseISO(r.date_reservation), "dd/MM/yyyy"),
+        r.nom,
+        r.telephone,
+        r.email || "",
+        r.formule,
+        r.nombre_personnes || "",
+        r.statut || "en_attente",
+        r.payment_status || "unpaid",
+      ];
+    });
 
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -185,18 +206,31 @@ export default function ReservationsPage() {
     const matchesStatus =
       statusFilter === "all" || (r.statut || "en_attente") === statusFilter;
     const matchesFormula = formulaFilter === "all" || r.formule === formulaFilter;
+    const matchesVenue = venueFilter === "all" || r.venue_id === venueFilter;
 
-    return matchesSearch && matchesStatus && matchesFormula;
+    return matchesSearch && matchesStatus && matchesFormula && matchesVenue;
   });
 
-  const pendingCount = reservations.filter(r => !r.statut || r.statut === "en_attente").length;
-  const confirmedCount = reservations.filter(r => r.statut === "confirmee").length;
-  const checkedInCount = reservations.filter(r => r.statut === "checked_in").length;
-  const paidCount = reservations.filter(r => r.payment_status === "paid_cash").length;
+  // Stats by venue
+  const getVenueStats = (venueId?: string) => {
+    const filtered = venueId ? reservations.filter(r => r.venue_id === venueId) : reservations;
+    return {
+      total: filtered.length,
+      pending: filtered.filter(r => !r.statut || r.statut === "en_attente").length,
+      confirmed: filtered.filter(r => r.statut === "confirmee").length,
+      checkedIn: filtered.filter(r => r.statut === "checked_in").length,
+      paid: filtered.filter(r => r.payment_status === "paid_cash").length,
+    };
+  };
+
+  const allStats = getVenueStats();
+  const gardenVenue = venues.find(v => v.code === 'GARDEN');
+  const restoVenue = venues.find(v => v.code === 'RESTAURANT');
+  const gardenStats = gardenVenue ? getVenueStats(gardenVenue.id) : { total: 0, pending: 0, confirmed: 0, checkedIn: 0, paid: 0 };
+  const restoStats = restoVenue ? getVenueStats(restoVenue.id) : { total: 0, pending: 0, confirmed: 0, checkedIn: 0, paid: 0 };
 
   const getStatusBadge = (reservation: any) => {
     const statut = reservation.statut;
-    const isPaid = reservation.payment_status === "paid_cash";
     
     switch (statut) {
       case "confirmee":
@@ -237,14 +271,34 @@ export default function ReservationsPage() {
     }
   };
 
+  const getVenueBadge = (venueId: string | null) => {
+    const venue = venues.find(v => v.id === venueId);
+    if (!venue) return null;
+    
+    if (venue.code === 'RESTAURANT') {
+      return (
+        <Badge variant="outline" className="gap-1 bg-chalet-gold/10 text-chalet-charcoal border-chalet-gold/30">
+          <UtensilsCrossed className="w-3 h-3" />
+          Resto
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="gap-1 bg-emerald-50 text-emerald-700 border-emerald-200">
+        <TreePine className="w-3 h-3" />
+        Jardin
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Réservations Jardin</h1>
+          <h1 className="text-2xl font-bold text-foreground">Toutes les Réservations</h1>
           <p className="text-muted-foreground">
-            Gérez les demandes de réservation et confirmez les tickets
+            Gérez les demandes de réservation Jardin & Restaurant
           </p>
         </div>
         <Button onClick={exportCSV} variant="outline" className="gap-2">
@@ -253,30 +307,95 @@ export default function ReservationsPage() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
-            <p className="text-sm text-muted-foreground">En attente</p>
+      {/* Stats by Venue */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* All */}
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Filter className="w-5 h-5 text-primary" />
+              </div>
+              <span className="font-medium">Toutes</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className="text-2xl font-bold">{allStats.total}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{allStats.pending}</p>
+                <p className="text-xs text-muted-foreground">Attente</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">{allStats.confirmed}</p>
+                <p className="text-xs text-muted-foreground">Confirmées</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{allStats.paid}</p>
+                <p className="text-xs text-muted-foreground">Payées</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-emerald-600">{confirmedCount}</p>
-            <p className="text-sm text-muted-foreground">Confirmées</p>
+
+        {/* Jardin */}
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <TreePine className="w-5 h-5 text-emerald-600" />
+              </div>
+              <span className="font-medium">Jardin</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className="text-2xl font-bold">{gardenStats.total}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{gardenStats.pending}</p>
+                <p className="text-xs text-muted-foreground">Attente</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">{gardenStats.confirmed}</p>
+                <p className="text-xs text-muted-foreground">Confirmées</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{gardenStats.paid}</p>
+                <p className="text-xs text-muted-foreground">Payées</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-blue-600">{checkedInCount}</p>
-            <p className="text-sm text-muted-foreground">Entrées validées</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{paidCount}</p>
-            <p className="text-sm text-muted-foreground">Payés cash</p>
+
+        {/* Restaurant */}
+        <Card className="bg-gradient-to-br from-chalet-cream to-chalet-beige/50 border-chalet-gold/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-chalet-gold/10">
+                <UtensilsCrossed className="w-5 h-5 text-chalet-gold" />
+              </div>
+              <span className="font-medium">Le Repère</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className="text-2xl font-bold">{restoStats.total}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-600">{restoStats.pending}</p>
+                <p className="text-xs text-muted-foreground">Attente</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">{restoStats.confirmed}</p>
+                <p className="text-xs text-muted-foreground">Confirmées</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{restoStats.paid}</p>
+                <p className="text-xs text-muted-foreground">Payées</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -294,8 +413,21 @@ export default function ReservationsPage() {
                 className="pl-10"
               />
             </div>
+            <Select value={venueFilter} onValueChange={setVenueFilter}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Lieu" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les lieux</SelectItem>
+                {venues.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
+              <SelectTrigger className="w-full sm:w-40">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
@@ -338,6 +470,7 @@ export default function ReservationsPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="font-semibold">N° Résa</TableHead>
+                    <TableHead className="font-semibold">Lieu</TableHead>
                     <TableHead className="font-semibold">Date</TableHead>
                     <TableHead className="font-semibold">Client</TableHead>
                     <TableHead className="font-semibold">Formule</TableHead>
@@ -354,6 +487,9 @@ export default function ReservationsPage() {
                         <div className="font-mono font-bold text-primary">
                           {res.reservation_number || "-"}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {getVenueBadge(res.venue_id)}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">
@@ -460,8 +596,7 @@ export default function ReservationsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Supprimer la réservation ?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Cette action est irréversible. La réservation de {res.nom} sera
-                                  définitivement supprimée.
+                                  Cette action est irréversible. La réservation de {res.nom} sera supprimée.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
