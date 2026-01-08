@@ -8,17 +8,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { format, subDays, startOfDay, parseISO } from "date-fns";
+import { format, subDays, startOfDay, parseISO, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
-
-// Prix par formule (en euros)
-const FORMULA_PRICES: Record<string, number> = {
-  "500": 500,
-  "1000": 1000,
-  "1500": 1500,
-  "3000": 3000,
-  "5000": 5000,
-};
 
 interface RevenueChartProps {
   reservations: any[];
@@ -30,24 +21,25 @@ export function RevenueChart({ reservations }: RevenueChartProps) {
     const data = [];
     const now = new Date();
 
+    // Only count paid reservations
+    const paidReservations = reservations.filter(
+      (r) => r.payment_status === "paid_cash" || r.payment_status === "paid"
+    );
+
     for (let i = days - 1; i >= 0; i--) {
       const date = startOfDay(subDays(now, i));
-      const dateStr = format(date, "yyyy-MM-dd");
 
-      // Calculer le revenu du jour (réservations confirmées)
-      const dayRevenue = reservations
+      // Calculate revenue for the day based on paid_at date
+      const dayRevenue = paidReservations
         .filter((r) => {
-          if (r.statut !== "confirmee") return false;
-          const createdAt = format(startOfDay(parseISO(r.created_at)), "yyyy-MM-dd");
-          return createdAt === dateStr;
+          if (!r.paid_at) return false;
+          const paidAt = parseISO(r.paid_at);
+          return isSameDay(paidAt, date);
         })
-        .reduce((sum, r) => {
-          const price = FORMULA_PRICES[r.formule] || 0;
-          return sum + price;
-        }, 0);
+        .reduce((sum, r) => sum + (r.total_price || 0), 0);
 
       data.push({
-        date: dateStr,
+        date: format(date, "yyyy-MM-dd"),
         label: format(date, "dd MMM", { locale: fr }),
         revenue: dayRevenue,
       });
@@ -59,11 +51,10 @@ export function RevenueChart({ reservations }: RevenueChartProps) {
   const totalPeriod = chartData.reduce((sum, d) => sum + d.revenue, 0);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
+    return new Intl.NumberFormat("fr-DZ", {
+      style: "decimal",
       minimumFractionDigits: 0,
-    }).format(value);
+    }).format(value) + " DA";
   };
 
   return (
@@ -72,10 +63,10 @@ export function RevenueChart({ reservations }: RevenueChartProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg font-semibold">
-              Évolution des revenus
+              Revenus (paiements cash)
             </CardTitle>
             <CardDescription>
-              Revenus des 30 derniers jours
+              30 derniers jours
             </CardDescription>
           </div>
           <div className="text-right">
@@ -108,8 +99,8 @@ export function RevenueChart({ reservations }: RevenueChartProps) {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                tickFormatter={(value) => `${value}€`}
-                width={60}
+                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                width={50}
               />
               <Tooltip
                 content={({ active, payload }) => {
