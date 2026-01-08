@@ -72,6 +72,7 @@ export type Database = {
           prix_dzd: number
           tags: string[] | null
           updated_at: string
+          venue_id: string | null
         }
         Insert: {
           actif?: boolean
@@ -85,6 +86,7 @@ export type Database = {
           prix_dzd?: number
           tags?: string[] | null
           updated_at?: string
+          venue_id?: string | null
         }
         Update: {
           actif?: boolean
@@ -98,8 +100,17 @@ export type Database = {
           prix_dzd?: number
           tags?: string[] | null
           updated_at?: string
+          venue_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "formulas_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages_contact: {
         Row: {
@@ -143,6 +154,7 @@ export type Database = {
           nom_ou_numero: string
           statut: string
           updated_at: string
+          venue_id: string | null
         }
         Insert: {
           capacite?: number
@@ -152,6 +164,7 @@ export type Database = {
           nom_ou_numero: string
           statut?: string
           updated_at?: string
+          venue_id?: string | null
         }
         Update: {
           capacite?: number
@@ -161,6 +174,7 @@ export type Database = {
           nom_ou_numero?: string
           statut?: string
           updated_at?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -168,6 +182,13 @@ export type Database = {
             columns: ["formule_id"]
             isOneToOne: false
             referencedRelation: "formulas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_tables_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -178,6 +199,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           date_reservation: string
+          duration_minutes: number | null
           email: string | null
           formule: string
           id: string
@@ -188,16 +210,19 @@ export type Database = {
           payment_status: string | null
           reservation_number: string | null
           secure_token: string | null
+          source: string | null
           statut: string | null
           table_id: string | null
           telephone: string
           total_price: number | null
+          venue_id: string | null
         }
         Insert: {
           checked_in_at?: string | null
           confirmed_at?: string | null
           created_at?: string
           date_reservation: string
+          duration_minutes?: number | null
           email?: string | null
           formule: string
           id?: string
@@ -208,16 +233,19 @@ export type Database = {
           payment_status?: string | null
           reservation_number?: string | null
           secure_token?: string | null
+          source?: string | null
           statut?: string | null
           table_id?: string | null
           telephone: string
           total_price?: number | null
+          venue_id?: string | null
         }
         Update: {
           checked_in_at?: string | null
           confirmed_at?: string | null
           created_at?: string
           date_reservation?: string
+          duration_minutes?: number | null
           email?: string | null
           formule?: string
           id?: string
@@ -228,12 +256,22 @@ export type Database = {
           payment_status?: string | null
           reservation_number?: string | null
           secure_token?: string | null
+          source?: string | null
           statut?: string | null
           table_id?: string | null
           telephone?: string
           total_price?: number | null
+          venue_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reservations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resto_menu_items: {
         Row: {
@@ -250,6 +288,7 @@ export type Database = {
           prix_dzd: number
           stock: number | null
           updated_at: string
+          venue_id: string | null
         }
         Insert: {
           allergenes?: string[] | null
@@ -265,6 +304,7 @@ export type Database = {
           prix_dzd: number
           stock?: number | null
           updated_at?: string
+          venue_id?: string | null
         }
         Update: {
           allergenes?: string[] | null
@@ -280,8 +320,17 @@ export type Database = {
           prix_dzd?: number
           stock?: number | null
           updated_at?: string
+          venue_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resto_menu_items_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resto_reservations: {
         Row: {
@@ -352,6 +401,7 @@ export type Database = {
           position_y: number
           statut: string
           updated_at: string
+          venue_id: string | null
         }
         Insert: {
           capacite?: number
@@ -362,6 +412,7 @@ export type Database = {
           position_y?: number
           statut?: string
           updated_at?: string
+          venue_id?: string | null
         }
         Update: {
           capacite?: number
@@ -372,8 +423,17 @@ export type Database = {
           position_y?: number
           statut?: string
           updated_at?: string
+          venue_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resto_tables_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -396,13 +456,53 @@ export type Database = {
         }
         Relationships: []
       }
+      venues: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_reservable: boolean
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_reservable?: boolean
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_reservable?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_table_availability: {
+        Args: {
+          p_duration_minutes: number
+          p_exclude_reservation_id?: string
+          p_start_datetime: string
+          p_table_id: string
+        }
+        Returns: boolean
+      }
       generate_reservation_number: { Args: never; Returns: string }
       generate_secure_token: { Args: never; Returns: string }
+      generate_venue_reservation_number: {
+        Args: { venue_code: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
