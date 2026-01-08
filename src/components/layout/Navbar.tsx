@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, TreePine } from "lucide-react";
+import { Menu, X, TreePine, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/", label: "Accueil" },
   { href: "/services", label: "Services" },
-  { href: "/resto", label: "Restaurant" },
-  { href: "/reservation", label: "Réservation" },
+  { href: "/resto", label: "Le Repère" },
+  { href: "/lounge", label: "Lounge" },
+  { href: "/reservation", label: "Réserver" },
   { href: "/galerie", label: "Galerie" },
   { href: "/contact", label: "Contact" },
 ];
@@ -49,8 +50,14 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* CTA Button - Desktop */}
-          <div className="hidden lg:block">
+          {/* CTA Buttons - Desktop */}
+          <div className="hidden lg:flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild className="gap-2">
+              <Link to="/ticket">
+                <Ticket className="w-4 h-4" />
+                Mon Ticket
+              </Link>
+            </Button>
             <Button variant="nature" size="default" asChild>
               <Link to="/reservation">Réserver</Link>
             </Button>
@@ -74,7 +81,7 @@ export function Navbar() {
         <div
           className={cn(
             "lg:hidden overflow-hidden transition-all duration-300 ease-in-out",
-            isOpen ? "max-h-96 pb-4" : "max-h-0"
+            isOpen ? "max-h-[500px] pb-4" : "max-h-0"
           )}
         >
           <div className="flex flex-col gap-2 pt-4">
@@ -93,6 +100,14 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <div className="flex gap-2 mt-2">
+              <Button variant="outline" className="flex-1 gap-2" asChild>
+                <Link to="/ticket" onClick={() => setIsOpen(false)}>
+                  <Ticket className="w-4 h-4" />
+                  Mon Ticket
+                </Link>
+              </Button>
+            </div>
             <Button variant="nature" size="lg" className="mt-2" asChild>
               <Link to="/reservation" onClick={() => setIsOpen(false)}>
                 Réserver une table
