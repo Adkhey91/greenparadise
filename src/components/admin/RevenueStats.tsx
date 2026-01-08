@@ -1,65 +1,93 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Calendar, DollarSign } from "lucide-react";
-
-// Prix par formule (en euros)
-const FORMULA_PRICES: Record<string, number> = {
-  "500": 500,
-  "1000": 1000,
-  "1500": 1500,
-  "3000": 3000,
-  "5000": 5000,
-};
+import { TrendingUp, Calendar, DollarSign, Wallet } from "lucide-react";
+import { isToday, parseISO, startOfWeek, isAfter } from "date-fns";
 
 interface RevenueStatsProps {
   reservations: any[];
 }
 
 export function RevenueStats({ reservations }: RevenueStatsProps) {
-  // Calculer le revenu total
-  const totalRevenue = reservations
-    .filter((r) => r.statut === "confirmee")
-    .reduce((sum, r) => {
-      const price = FORMULA_PRICES[r.formule] || 0;
-      return sum + price;
-    }, 0);
+  // Only count reservations with payment_status = 'paid_cash' or 'paid'
+  const paidReservations = reservations.filter(
+    (r) => r.payment_status === "paid_cash" || r.payment_status === "paid"
+  );
 
-  // Calculer le revenu du mois en cours
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  
-  const monthlyRevenue = reservations
+  // Calculate total revenue from total_price field
+  const totalRevenue = paidReservations.reduce((sum, r) => {
+    return sum + (r.total_price || 0);
+  }, 0);
+
+  // Today's revenue
+  const todayRevenue = paidReservations
     .filter((r) => {
-      if (r.statut !== "confirmee") return false;
-      const createdAt = new Date(r.created_at);
-      return createdAt >= startOfMonth;
+      const paidAt = r.paid_at ? parseISO(r.paid_at) : null;
+      return paidAt && isToday(paidAt);
     })
-    .reduce((sum, r) => {
-      const price = FORMULA_PRICES[r.formule] || 0;
-      return sum + price;
-    }, 0);
+    .reduce((sum, r) => sum + (r.total_price || 0), 0);
 
-  // Nombre de réservations confirmées ce mois
-  const monthlyConfirmed = reservations.filter((r) => {
-    if (r.statut !== "confirmee") return false;
-    const createdAt = new Date(r.created_at);
-    return createdAt >= startOfMonth;
-  }).length;
+  // This week's revenue
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const weeklyRevenue = paidReservations
+    .filter((r) => {
+      const paidAt = r.paid_at ? parseISO(r.paid_at) : null;
+      return paidAt && isAfter(paidAt, weekStart);
+    })
+    .reduce((sum, r) => sum + (r.total_price || 0), 0);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
+    return new Intl.NumberFormat("fr-DZ", {
+      style: "decimal",
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount) + " DA";
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Chiffre d'affaires total */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Today's Revenue */}
+      <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-200">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Aujourd'hui
+          </CardTitle>
+          <div className="p-2 rounded-lg bg-emerald-500/10">
+            <Wallet className="h-4 w-4 text-emerald-600" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-emerald-700">
+            {formatCurrency(todayRevenue)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {paidReservations.filter(r => r.paid_at && isToday(parseISO(r.paid_at))).length} paiements cash
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Weekly Revenue */}
+      <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-200">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Cette semaine
+          </CardTitle>
+          <div className="p-2 rounded-lg bg-blue-500/10">
+            <Calendar className="h-4 w-4 text-blue-600" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-blue-700">
+            {formatCurrency(weeklyRevenue)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Depuis lundi
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Total Revenue */}
       <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Chiffre d'affaires total
+            Revenu total
           </CardTitle>
           <div className="p-2 rounded-lg bg-primary/10">
             <DollarSign className="h-4 w-4 text-primary" />
@@ -70,32 +98,12 @@ export function RevenueStats({ reservations }: RevenueStatsProps) {
             {formatCurrency(totalRevenue)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {reservations.filter((r) => r.statut === "confirmee").length} réservations confirmées
+            {paidReservations.length} paiements reçus
           </p>
         </CardContent>
       </Card>
 
-      {/* Revenu du mois */}
-      <Card className="bg-gradient-to-br from-secondary/20 to-secondary/5 border-secondary/30">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Revenu du mois
-          </CardTitle>
-          <div className="p-2 rounded-lg bg-secondary/20">
-            <Calendar className="h-4 w-4 text-primary" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-foreground">
-            {formatCurrency(monthlyRevenue)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {monthlyConfirmed} réservations ce mois
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Croissance */}
+      {/* Average */}
       <Card className="bg-gradient-to-br from-accent/20 to-accent/5 border-accent/30">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -107,15 +115,12 @@ export function RevenueStats({ reservations }: RevenueStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-foreground">
-            {reservations.filter((r) => r.statut === "confirmee").length > 0
-              ? formatCurrency(
-                  totalRevenue /
-                    reservations.filter((r) => r.statut === "confirmee").length
-                )
+            {paidReservations.length > 0
+              ? formatCurrency(totalRevenue / paidReservations.length)
               : formatCurrency(0)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Par réservation confirmée
+            Par réservation payée
           </p>
         </CardContent>
       </Card>

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Layout } from "@/components/layout/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +23,11 @@ import {
   Coffee,
   IceCream,
   Wine,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  Copy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PaymentModal } from "@/components/PaymentModal";
-import { PaymentSuccessModal } from "@/components/PaymentSuccessModal";
 
 type RestoCategorie = 'entrees' | 'plats' | 'desserts' | 'boissons';
 
@@ -79,14 +78,9 @@ export default function RestoPage() {
   const [reservationEmail, setReservationEmail] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
-  const [confirmationCode, setConfirmationCode] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [reservationNumber, setReservationNumber] = useState("");
   const { toast } = useToast();
-
-  // Fixed amount for restaurant table reservation (can be adjusted)
-  const RESTO_RESERVATION_AMOUNT = 500; // 500 DA
 
   useEffect(() => {
     fetchData();
@@ -164,7 +158,7 @@ export default function RestoPage() {
 
     setSubmitting(true);
     try {
-      // Create reservation with pending payment status
+      // Create reservation with pending status (free reservation, no payment)
       const { data, error } = await supabase.from('resto_reservations').insert({
         table_id: selectedTable.id,
         nom: reservationNom,
@@ -173,16 +167,24 @@ export default function RestoPage() {
         date_reservation: format(reservationDate, 'yyyy-MM-dd'),
         heure: reservationHeure,
         nombre_personnes: reservationPersonnes,
-        montant_dzd: RESTO_RESERVATION_AMOUNT,
-        statut: 'paiement_en_attente'
+        montant_dzd: 0,
+        statut: 'en_attente'
       }).select('id').single();
 
       if (error) throw error;
 
-      // Store reservation ID and open payment modal
-      setPendingReservationId(data.id);
+      // Generate a simple reservation number for resto
+      const resNumber = `RST-${Math.floor(Math.random() * 9000 + 1000)}`;
+      setReservationNumber(resNumber);
       setIsDialogOpen(false);
-      setShowPaymentModal(true);
+      setShowSuccess(true);
+      
+      // Reset form
+      setReservationNom("");
+      setReservationTel("");
+      setReservationEmail("");
+      setReservationDate(undefined);
+      setReservationHeure("");
     } catch (error) {
       console.error('Error:', error);
       toast({ title: "Erreur", description: "Impossible de créer la réservation", variant: "destructive" });
@@ -191,23 +193,15 @@ export default function RestoPage() {
     }
   };
 
-  const handlePaymentSuccess = (code: string) => {
-    setConfirmationCode(code);
-    setShowPaymentModal(false);
-    setShowSuccessModal(true);
-    // Reset form
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    setReservationNumber("");
     setSelectedTable(null);
-    setReservationNom("");
-    setReservationTel("");
-    setReservationEmail("");
-    setReservationDate(undefined);
-    setReservationHeure("");
-    setPendingReservationId(null);
   };
 
-  const handleSuccessClose = () => {
-    setShowSuccessModal(false);
-    setConfirmationCode("");
+  const copyReservationNumber = () => {
+    navigator.clipboard.writeText(reservationNumber);
+    toast({ title: "Copié !", description: "Numéro de réservation copié" });
   };
 
   const filteredItems = menuItems.filter(item => item.categorie === activeCategory);
@@ -564,34 +558,53 @@ export default function RestoPage() {
         </div>
       )}
 
-      {/* Payment Modal */}
-      {pendingReservationId && selectedTable && reservationDate && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          onSuccess={handlePaymentSuccess}
-          reservationData={{
-            id: pendingReservationId,
-            type: 'resto',
-            amount: RESTO_RESERVATION_AMOUNT,
-            customerName: reservationNom,
-            customerPhone: reservationTel,
-            customerEmail: reservationEmail || undefined,
-            tableNumber: selectedTable.numero,
-            date: format(reservationDate, 'dd/MM/yyyy', { locale: fr }),
-          }}
-        />
-      )}
+      {/* Success Dialog */}
+      <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-0 overflow-hidden">
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-white" />
+            </div>
+            <DialogTitle className="text-2xl font-bold text-white">
+              Demande envoyée !
+            </DialogTitle>
+            <p className="text-white/80 text-sm mt-2">
+              Votre réservation est en attente de confirmation
+            </p>
+          </div>
+          
+          <div className="p-6 space-y-4">
+            <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Numéro de réservation</p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl font-black tracking-widest text-primary">{reservationNumber}</span>
+                <Button variant="ghost" size="icon" onClick={copyReservationNumber}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200">
+              <div className="flex items-center gap-2 text-amber-700">
+                <Clock className="w-5 h-5" />
+                <span className="font-medium">En attente de confirmation</span>
+              </div>
+              <p className="text-sm text-amber-600 mt-1">
+                Nous vous contacterons pour confirmer votre table
+              </p>
+            </div>
 
-      {/* Success Modal */}
-      <PaymentSuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleSuccessClose}
-        confirmationCode={confirmationCode}
-        tableNumber={selectedTable?.numero}
-        date={reservationDate ? format(reservationDate, 'dd/MM/yyyy', { locale: fr }) : ''}
-        type="resto"
-      />
+            <div className="text-center text-sm text-muted-foreground">
+              <p>Table {selectedTable?.numero} • {reservationPersonnes} personnes</p>
+              {reservationDate && <p>{format(reservationDate, "dd MMMM yyyy", { locale: fr })} à {reservationHeure}</p>}
+            </div>
+            
+            <Button onClick={handleSuccessClose} className="w-full" variant="nature">
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
