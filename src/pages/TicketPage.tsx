@@ -41,6 +41,7 @@ interface Reservation {
   payment_status: string | null;
   total_price: number | null;
   table_id: string | null;
+  table_number_snapshot: string | null;
   confirmed_at: string | null;
   checked_in_at: string | null;
   venue_id: string | null;
@@ -486,18 +487,35 @@ export default function TicketPage() {
                   </Badge>
                 </div>
 
-                {/* Table assignment (if any) */}
-                {reservation.table_id && (
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${
-                    isRestaurant ? "bg-chalet-beige/30" : "bg-muted/50"
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Table assignée</span>
+                {/* Table assignment */}
+                <div className={`flex items-center justify-between p-4 rounded-xl border ${
+                  isRestaurant 
+                    ? "bg-chalet-beige/50 border-chalet-gold/30" 
+                    : "bg-primary/5 border-primary/20"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      isRestaurant ? "bg-chalet-charcoal" : "bg-primary"
+                    }`}>
+                      <MapPin className={`w-5 h-5 ${isRestaurant ? "text-chalet-cream" : "text-primary-foreground"}`} />
                     </div>
-                    <Badge variant="secondary">Oui</Badge>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Table</p>
+                      <p className={`text-lg font-bold ${isRestaurant ? "text-chalet-charcoal" : "text-foreground"}`}>
+                        {reservation.table_number_snapshot || "À l'accueil"}
+                      </p>
+                    </div>
                   </div>
-                )}
+                  {reservation.table_number_snapshot && (
+                    <Badge className={`text-lg px-3 py-1 ${
+                      isRestaurant 
+                        ? "bg-chalet-gold text-chalet-charcoal" 
+                        : "bg-primary text-primary-foreground"
+                    }`}>
+                      N° {reservation.table_number_snapshot}
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Checked in status */}
                 {isCheckedIn && (

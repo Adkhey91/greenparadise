@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   QrCode,
   Search,
@@ -21,7 +21,8 @@ import {
   Camera,
   CameraOff,
   TreePine,
-  UtensilsCrossed
+  UtensilsCrossed,
+  MapPin
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -45,6 +46,16 @@ interface FoundReservation {
   total_price: number | null;
   checked_in_at: string | null;
   venue_id: string | null;
+  table_id: string | null;
+  table_number_snapshot: string | null;
+}
+
+interface AvailableTable {
+  id: string;
+  nom_ou_numero: string;
+  capacite: number;
+  statut: string;
+  formule_id: string;
 }
 
 export default function CheckInPage() {
@@ -57,6 +68,8 @@ export default function CheckInPage() {
   const [foundReservation, setFoundReservation] = useState<FoundReservation | null>(null);
   const [processing, setProcessing] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [availableTables, setAvailableTables] = useState<AvailableTable[]>([]);
+  const [selectedTableId, setSelectedTableId] = useState<string>("");
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -159,6 +172,79 @@ export default function CheckInPage() {
     }
 
     setFoundReservation(data as FoundReservation);
+    setSelectedTableId(data.table_id || "");
+    
+    // Fetch available tables for this venue
+    await fetchAvailableTables(data.reservation_number?.startsWith("RPR-") ? "RESTAURANT" : "GARDEN");
+  };
+
+  const fetchAvailableTables = async (venueCode: string) => {
+    const { data: venueData } = await supabase
+      .from("venues")
+      .select("id")
+      .eq("code", venueCode)
+      .single();
+    
+    if (!venueData) return;
+
+    const { data: tables } = await supabase
+      .from("park_tables")
+      .select("*")
+      .eq("venue_id", venueData.id)
+      .in("statut", ["libre", "reservee"])
+      .order("nom_ou_numero");
+    
+    if (tables) {
+      setAvailableTables(tables as AvailableTable[]);
+    }
+  };
+
+  const handleAssignTable = async (tableId: string) => {
+    if (!foundReservation || !tableId) return;
+
+    setProcessing(true);
+
+    // Get table info
+    const { data: tableData } = await supabase
+      .from("park_tables")
+      .select("nom_ou_numero")
+      .eq("id", tableId)
+      .single();
+
+    const tableNumber = tableData?.nom_ou_numero || tableId;
+
+    const { error } = await supabase
+      .from("reservations")
+      .update({ 
+        table_id: tableId,
+        table_number_snapshot: tableNumber
+      })
+      .eq("id", foundReservation.id);
+
+    setProcessing(false);
+
+    if (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'assigner la table",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Table assignée ✓",
+      description: `Table ${tableNumber} assignée à ${foundReservation.nom}`,
+    });
+
+    setFoundReservation({
+      ...foundReservation,
+      table_id: tableId,
+      table_number_snapshot: tableNumber
+    });
+    setSelectedTableId(tableId);
+
+    await refetch();
   };
 
   const handleCheckIn = async () => {
@@ -471,6 +557,62 @@ export default function CheckInPage() {
                     {foundReservation.total_price?.toLocaleString() || "-"} DA
                   </p>
                 </div>
+              </div>
+
+              {/* Table Assignment */}
+              <div className={`p-4 rounded-xl border-2 ${
+                isRestaurant ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-semibold">Table assignée</span>
+                </div>
+                
+                {foundReservation.table_number_snapshot ? (
+                  <div className="flex items-center justify-between">
+                    <Badge className={`text-lg px-4 py-2 ${
+                      isRestaurant ? "bg-amber-600" : "bg-green-600"
+                    } text-white`}>
+                      Table {foundReservation.table_number_snapshot}
+                    </Badge>
+                    <Select 
+                      value={selectedTableId} 
+                      onValueChange={handleAssignTable}
+                      disabled={processing}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Changer..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTables.map((table) => (
+                          <SelectItem key={table.id} value={table.id}>
+                            Table {table.nom_ou_numero} ({table.capacite}p)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Aucune table assignée</p>
+                    <Select 
+                      value={selectedTableId} 
+                      onValueChange={handleAssignTable}
+                      disabled={processing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une table..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTables.map((table) => (
+                          <SelectItem key={table.id} value={table.id}>
+                            Table {table.nom_ou_numero} ({table.capacite} pers.)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               {/* Payment Status */}
