@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   QrCode,
   Search,
@@ -18,7 +19,9 @@ import {
   Users,
   Phone,
   Camera,
-  CameraOff
+  CameraOff,
+  TreePine,
+  UtensilsCrossed
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -41,6 +44,7 @@ interface FoundReservation {
   payment_status: string | null;
   total_price: number | null;
   checked_in_at: string | null;
+  venue_id: string | null;
 }
 
 export default function CheckInPage() {
@@ -78,8 +82,6 @@ export default function CheckInPage() {
       }
       setSearchMode("camera");
       
-      // Note: Real QR scanning would require a library like @zxing/library
-      // For now, we'll show the camera feed but scanning is manual
       toast({
         title: "Caméra activée",
         description: "Scannez le QR code ou entrez le code manuellement",
@@ -109,7 +111,7 @@ export default function CheckInPage() {
     if (!searchInput.trim()) {
       toast({
         title: "Champ requis",
-        description: "Entrez un numéro de réservation ou téléphone",
+        description: "Entrez un numéro de réservation, téléphone ou token",
         variant: "destructive",
       });
       return;
@@ -118,13 +120,23 @@ export default function CheckInPage() {
     setSearching(true);
     setFoundReservation(null);
 
-    const input = searchInput.trim().toUpperCase();
+    let input = searchInput.trim();
+    
+    // Extract token from URL if pasted
+    if (input.includes("/ticket?token=")) {
+      const urlMatch = input.match(/token=([^&\s]+)/);
+      if (urlMatch) {
+        input = urlMatch[1];
+      }
+    }
+    
+    const inputUpper = input.toUpperCase();
 
     // Search by reservation_number, phone, or secure_token
     let query = supabase.from("reservations").select("*");
     
-    if (input.startsWith("GRN-")) {
-      query = query.eq("reservation_number", input);
+    if (inputUpper.startsWith("GRN-") || inputUpper.startsWith("RPR-")) {
+      query = query.eq("reservation_number", inputUpper);
     } else if (input.length > 30) {
       // Likely a secure token
       query = query.eq("secure_token", input);
@@ -260,6 +272,11 @@ export default function CheckInPage() {
     }
   };
 
+  // Determine venue type
+  const isRestaurant = foundReservation?.reservation_number?.startsWith("RPR-");
+  const venueName = isRestaurant ? "Le Repère" : "Jardin";
+  const VenueIcon = isRestaurant ? UtensilsCrossed : TreePine;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,20 +300,22 @@ export default function CheckInPage() {
           <CardContent>
             <form onSubmit={handleSearch} className="space-y-4">
               <Input
-                placeholder="N° réservation (GRN-XXXX) ou téléphone"
+                placeholder="N° réservation (GRN-/RPR-), téléphone ou token"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="h-12 font-mono"
               />
               <Button 
                 type="submit" 
-                variant="nature" 
-                className="w-full gap-2"
+                className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={searching}
               >
                 {searching ? "Recherche..." : "Rechercher"}
               </Button>
             </form>
+            <p className="text-xs text-muted-foreground mt-3">
+              Vous pouvez coller directement l'URL du QR code
+            </p>
           </CardContent>
         </Card>
 
@@ -330,7 +349,7 @@ export default function CheckInPage() {
                   Arrêter la caméra
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  Placez le QR code dans le cadre ou entrez le code manuellement
+                  Placez le QR code dans le cadre, puis copiez le lien manuellement
                 </p>
               </div>
             ) : (
@@ -357,13 +376,18 @@ export default function CheckInPage() {
 
       {/* Found Reservation */}
       {foundReservation && (
-        <Card className="border-2 border-primary/30">
+        <Card className={`border-2 ${isRestaurant ? "border-amber-300" : "border-green-300"}`}>
           <CardContent className="p-6">
             <div className="space-y-6">
               {/* Header with status */}
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Réservation trouvée</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge className={`gap-1 ${isRestaurant ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
+                      <VenueIcon className="w-3 h-3" />
+                      {venueName}
+                    </Badge>
+                  </div>
                   <p className="text-2xl font-bold text-primary">
                     {foundReservation.reservation_number}
                   </p>
@@ -373,13 +397,13 @@ export default function CheckInPage() {
 
               {/* Already checked in warning */}
               {foundReservation.statut === "checked_in" && (
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                  <div className="flex items-center gap-2 text-blue-700">
                     <CheckCircle className="w-5 h-5" />
                     <span className="font-semibold">Déjà validée</span>
                   </div>
                   {foundReservation.checked_in_at && (
-                    <p className="text-sm text-blue-600 dark:text-blue-500 mt-1">
+                    <p className="text-sm text-blue-600 mt-1">
                       Entrée le {format(parseISO(foundReservation.checked_in_at), "dd/MM à HH:mm", { locale: fr })}
                     </p>
                   )}
@@ -388,12 +412,12 @@ export default function CheckInPage() {
 
               {/* Not confirmed warning */}
               {foundReservation.statut !== "confirmee" && foundReservation.statut !== "checked_in" && (
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-2 text-amber-700">
                     <AlertCircle className="w-5 h-5" />
                     <span className="font-semibold">Réservation non confirmée</span>
                   </div>
-                  <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">
+                  <p className="text-sm text-amber-600 mt-1">
                     Cette réservation doit être confirmée avant le check-in
                   </p>
                 </div>
@@ -434,7 +458,9 @@ export default function CheckInPage() {
               </div>
 
               {/* Formula & Price */}
-              <div className="p-4 rounded-xl bg-muted/50 flex items-center justify-between">
+              <div className={`p-4 rounded-xl flex items-center justify-between ${
+                isRestaurant ? "bg-amber-50" : "bg-green-50"
+              }`}>
                 <div>
                   <p className="text-sm text-muted-foreground">Formule</p>
                   <p className="font-semibold">{foundReservation.formule}</p>
@@ -458,12 +484,19 @@ export default function CheckInPage() {
                 </Badge>
               </div>
 
+              {/* Debug: Show secure token */}
+              {process.env.NODE_ENV === 'development' && foundReservation.secure_token && (
+                <div className="p-3 bg-gray-100 rounded-lg">
+                  <p className="text-xs text-gray-500">Debug - Token:</p>
+                  <p className="text-xs font-mono break-all">{foundReservation.secure_token}</p>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                 {foundReservation.statut === "confirmee" && (
                   <Button
-                    variant="nature"
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={handleCheckIn}
                     disabled={processing}
                   >
