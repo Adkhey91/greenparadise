@@ -213,6 +213,7 @@ export type Database = {
           source: string | null
           statut: string | null
           table_id: string | null
+          table_number_snapshot: string | null
           telephone: string
           total_price: number | null
           venue_id: string | null
@@ -236,6 +237,7 @@ export type Database = {
           source?: string | null
           statut?: string | null
           table_id?: string | null
+          table_number_snapshot?: string | null
           telephone: string
           total_price?: number | null
           venue_id?: string | null
@@ -259,6 +261,7 @@ export type Database = {
           source?: string | null
           statut?: string | null
           table_id?: string | null
+          table_number_snapshot?: string | null
           telephone?: string
           total_price?: number | null
           venue_id?: string | null
