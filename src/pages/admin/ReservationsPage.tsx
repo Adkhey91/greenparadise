@@ -87,12 +87,59 @@ export default function ReservationsPage() {
   const confirmReservation = async (reservation: any) => {
     setProcessing(reservation.id);
     
+    // Determine venue code from reservation number
+    const venueCode = reservation.reservation_number?.startsWith("RPR-") ? "RESTAURANT" : "GARDEN";
+    
+    // Get venue ID
+    const { data: venueData } = await supabase
+      .from("venues")
+      .select("id")
+      .eq("code", venueCode)
+      .single();
+    
+    let assignedTableId: string | null = null;
+    let assignedTableNumber: string | null = null;
+    
+    if (venueData) {
+      // Find an available table (best fit: smallest table that fits the party)
+      const partySize = reservation.nombre_personnes || 1;
+      
+      const { data: availableTables } = await supabase
+        .from("park_tables")
+        .select("*")
+        .eq("venue_id", venueData.id)
+        .eq("statut", "libre")
+        .gte("capacite", partySize)
+        .order("capacite", { ascending: true })
+        .limit(1);
+      
+      if (availableTables && availableTables.length > 0) {
+        const table = availableTables[0];
+        assignedTableId = table.id;
+        assignedTableNumber = table.nom_ou_numero;
+        
+        // Mark table as reserved
+        await supabase
+          .from("park_tables")
+          .update({ statut: "reservee" })
+          .eq("id", table.id);
+      }
+    }
+    
+    // Update reservation
+    const updateData: any = { 
+      statut: "confirmee",
+      confirmed_at: new Date().toISOString()
+    };
+    
+    if (assignedTableId) {
+      updateData.table_id = assignedTableId;
+      updateData.table_number_snapshot = assignedTableNumber;
+    }
+    
     const { error } = await supabase
       .from("reservations")
-      .update({ 
-        statut: "confirmee",
-        confirmed_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq("id", reservation.id);
 
     setProcessing(null);
@@ -106,9 +153,13 @@ export default function ReservationsPage() {
       return;
     }
 
+    const tableMessage = assignedTableNumber 
+      ? `Table ${assignedTableNumber} assignée` 
+      : "Pas de table dispo, à assigner manuellement";
+
     toast({
       title: "Réservation confirmée ✓",
-      description: `${reservation.nom} - Le ticket QR est maintenant disponible`,
+      description: `${reservation.nom} - ${tableMessage}`,
     });
 
     await refetch();

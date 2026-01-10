@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import HomePage from "./pages/HomePage";
 import ReservationPage from "./pages/ReservationPage";
 import TicketPage from "./pages/TicketPage";
+import TicketByTokenPage from "./pages/TicketByTokenPage";
 import ServicesPage from "./pages/ServicesPage";
 import RestoPage from "./pages/RestoPage";
 import LoungePage from "./pages/LoungePage";
@@ -39,7 +40,8 @@ const App = () => (
             <Route path="/resto" element={<RestoPage />} />
             <Route path="/lounge" element={<LoungePage />} />
             <Route path="/reservation" element={<ReservationPage />} />
-            <Route path="/ticket" element={<TicketPage />} />
+            <Route path="/ticket" element={<TicketByTokenPage />} />
+            <Route path="/mon-ticket" element={<TicketPage />} />
             <Route path="/galerie" element={<GaleriePage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />

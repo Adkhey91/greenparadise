@@ -22,7 +22,10 @@ import {
   CameraOff,
   TreePine,
   UtensilsCrossed,
-  MapPin
+  MapPin,
+  Bug,
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -56,6 +59,7 @@ interface AvailableTable {
   capacite: number;
   statut: string;
   formule_id: string;
+  venue_id: string;
 }
 
 export default function CheckInPage() {
@@ -70,6 +74,8 @@ export default function CheckInPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableTables, setAvailableTables] = useState<AvailableTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>("");
+  const [debugInfo, setDebugInfo] = useState<string>("");
+  const [showDebug, setShowDebug] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -132,6 +138,7 @@ export default function CheckInPage() {
 
     setSearching(true);
     setFoundReservation(null);
+    setDebugInfo("");
 
     let input = searchInput.trim();
     
@@ -140,25 +147,72 @@ export default function CheckInPage() {
       const urlMatch = input.match(/token=([^&\s]+)/);
       if (urlMatch) {
         input = urlMatch[1];
+        setDebugInfo(prev => prev + `Token extrait de l'URL: ${input.substring(0, 20)}...\n`);
       }
     }
     
     const inputUpper = input.toUpperCase();
+    let searchType = "";
+    let data: any = null;
+    let error: any = null;
 
-    // Search by reservation_number, phone, or secure_token
-    let query = supabase.from("reservations").select("*");
-    
-    if (inputUpper.startsWith("GRN-") || inputUpper.startsWith("RPR-")) {
-      query = query.eq("reservation_number", inputUpper);
-    } else if (input.length > 30) {
-      // Likely a secure token
-      query = query.eq("secure_token", input);
-    } else {
-      // Search by phone
-      query = query.ilike("telephone", `%${input.replace(/\s/g, '')}%`);
+    try {
+      // Strategy 1: Search by reservation_number
+      if (inputUpper.startsWith("GRN-") || inputUpper.startsWith("RPR-")) {
+        searchType = "reservation_number";
+        setDebugInfo(prev => prev + `Recherche par N°: ${inputUpper}\n`);
+        
+        const result = await supabase
+          .from("reservations")
+          .select("*")
+          .eq("reservation_number", inputUpper)
+          .maybeSingle();
+        
+        data = result.data;
+        error = result.error;
+      }
+      // Strategy 2: Search by secure_token (long string)
+      else if (input.length > 30) {
+        searchType = "secure_token";
+        setDebugInfo(prev => prev + `Recherche par token: ${input.substring(0, 20)}...\n`);
+        
+        const result = await supabase
+          .from("reservations")
+          .select("*")
+          .eq("secure_token", input)
+          .maybeSingle();
+        
+        data = result.data;
+        error = result.error;
+      }
+      // Strategy 3: Search by phone (fallback)
+      else {
+        searchType = "telephone";
+        const cleanPhone = input.replace(/\s/g, '');
+        setDebugInfo(prev => prev + `Recherche par téléphone: ${cleanPhone}\n`);
+        
+        const result = await supabase
+          .from("reservations")
+          .select("*")
+          .ilike("telephone", `%${cleanPhone.slice(-8)}%`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        data = result.data;
+        error = result.error;
+      }
+
+      setDebugInfo(prev => prev + `Type: ${searchType}\nRésultat: ${data ? 'Trouvé ✓' : 'Non trouvé ✗'}\n`);
+      if (error) {
+        setDebugInfo(prev => prev + `Erreur: ${error.message}\n`);
+      }
+
+    } catch (err: any) {
+      console.error("Search error:", err);
+      setDebugInfo(prev => prev + `Exception: ${err.message}\n`);
+      error = err;
     }
-
-    const { data, error } = await query.limit(1).single();
 
     setSearching(false);
 
@@ -185,7 +239,10 @@ export default function CheckInPage() {
       .eq("code", venueCode)
       .single();
     
-    if (!venueData) return;
+    if (!venueData) {
+      setDebugInfo(prev => prev + `Venue ${venueCode} non trouvé\n`);
+      return;
+    }
 
     const { data: tables } = await supabase
       .from("park_tables")
@@ -196,6 +253,7 @@ export default function CheckInPage() {
     
     if (tables) {
       setAvailableTables(tables as AvailableTable[]);
+      setDebugInfo(prev => prev + `Tables disponibles: ${tables.length}\n`);
     }
   };
 
@@ -213,6 +271,7 @@ export default function CheckInPage() {
 
     const tableNumber = tableData?.nom_ou_numero || tableId;
 
+    // Update reservation with table info
     const { error } = await supabase
       .from("reservations")
       .update({ 
@@ -220,6 +279,12 @@ export default function CheckInPage() {
         table_number_snapshot: tableNumber
       })
       .eq("id", foundReservation.id);
+
+    // Mark table as reserved
+    await supabase
+      .from("park_tables")
+      .update({ statut: "reservee" })
+      .eq("id", tableId);
 
     setProcessing(false);
 
@@ -270,6 +335,7 @@ export default function CheckInPage() {
 
     setProcessing(true);
 
+    // Update reservation status
     const { error } = await supabase
       .from("reservations")
       .update({ 
@@ -277,6 +343,14 @@ export default function CheckInPage() {
         checked_in_at: new Date().toISOString()
       })
       .eq("id", foundReservation.id);
+
+    // Mark table as occupied if assigned
+    if (foundReservation.table_id) {
+      await supabase
+        .from("park_tables")
+        .update({ statut: "occupee" })
+        .eq("id", foundReservation.table_id);
+    }
 
     setProcessing(false);
 
@@ -291,7 +365,7 @@ export default function CheckInPage() {
 
     toast({
       title: "Entrée validée ✓",
-      description: `${foundReservation.nom} - ${foundReservation.formule}`,
+      description: `${foundReservation.nom} - Table: ${foundReservation.table_number_snapshot || "non assignée"}`,
     });
 
     setFoundReservation({
@@ -340,9 +414,31 @@ export default function CheckInPage() {
     await refetch();
   };
 
+  const handleReleaseTable = async () => {
+    if (!foundReservation?.table_id) return;
+
+    setProcessing(true);
+
+    // Free the table
+    await supabase
+      .from("park_tables")
+      .update({ statut: "libre" })
+      .eq("id", foundReservation.table_id);
+
+    setProcessing(false);
+
+    toast({
+      title: "Table libérée ✓",
+      description: `Table ${foundReservation.table_number_snapshot} est maintenant libre`,
+    });
+
+    await refetch();
+  };
+
   const handleClear = () => {
     setFoundReservation(null);
     setSearchInput("");
+    setDebugInfo("");
   };
 
   const getStatusBadge = (statut: string | null) => {
@@ -366,11 +462,22 @@ export default function CheckInPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Check-in Entrée</h1>
-        <p className="text-muted-foreground">
-          Scanner ou rechercher une réservation pour valider l'entrée
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Check-in Entrée</h1>
+          <p className="text-muted-foreground">
+            Scanner ou rechercher une réservation pour valider l'entrée
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowDebug(!showDebug)}
+          className="gap-2"
+        >
+          <Bug className="w-4 h-4" />
+          {showDebug ? "Masquer debug" : "Debug"}
+        </Button>
       </div>
 
       {/* Search Section */}
@@ -396,12 +503,29 @@ export default function CheckInPage() {
                 className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={searching}
               >
-                {searching ? "Recherche..." : "Rechercher"}
+                {searching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Recherche...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    Rechercher
+                  </>
+                )}
               </Button>
             </form>
             <p className="text-xs text-muted-foreground mt-3">
-              Vous pouvez coller directement l'URL du QR code
+              Collez directement l'URL du QR code ou le numéro de réservation
             </p>
+
+            {/* Debug panel */}
+            {showDebug && debugInfo && (
+              <div className="mt-4 p-3 bg-gray-900 text-green-400 rounded-lg font-mono text-xs overflow-x-auto">
+                <pre>{debugInfo}</pre>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -435,7 +559,7 @@ export default function CheckInPage() {
                   Arrêter la caméra
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  Placez le QR code dans le cadre, puis copiez le lien manuellement
+                  Scannez le QR puis collez le lien ci-dessus
                 </p>
               </div>
             ) : (
@@ -569,28 +693,42 @@ export default function CheckInPage() {
                 </div>
                 
                 {foundReservation.table_number_snapshot ? (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <Badge className={`text-lg px-4 py-2 ${
                       isRestaurant ? "bg-amber-600" : "bg-green-600"
                     } text-white`}>
-                      Table {foundReservation.table_number_snapshot}
+                      {foundReservation.table_number_snapshot}
                     </Badge>
-                    <Select 
-                      value={selectedTableId} 
-                      onValueChange={handleAssignTable}
-                      disabled={processing}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Changer..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTables.map((table) => (
-                          <SelectItem key={table.id} value={table.id}>
-                            Table {table.nom_ou_numero} ({table.capacite}p)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={selectedTableId} 
+                        onValueChange={handleAssignTable}
+                        disabled={processing}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Changer..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTables.map((table) => (
+                            <SelectItem key={table.id} value={table.id}>
+                              {table.nom_ou_numero} ({table.capacite}p)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {foundReservation.statut === "checked_in" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleReleaseTable}
+                          disabled={processing}
+                          className="gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Libérer
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -606,7 +744,7 @@ export default function CheckInPage() {
                       <SelectContent>
                         {availableTables.map((table) => (
                           <SelectItem key={table.id} value={table.id}>
-                            Table {table.nom_ou_numero} ({table.capacite} pers.)
+                            {table.nom_ou_numero} ({table.capacite} pers.)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -627,10 +765,14 @@ export default function CheckInPage() {
               </div>
 
               {/* Debug: Show secure token */}
-              {process.env.NODE_ENV === 'development' && foundReservation.secure_token && (
+              {showDebug && foundReservation.secure_token && (
                 <div className="p-3 bg-gray-100 rounded-lg">
                   <p className="text-xs text-gray-500">Debug - Token:</p>
                   <p className="text-xs font-mono break-all">{foundReservation.secure_token}</p>
+                  <p className="text-xs text-gray-500 mt-2">URL QR:</p>
+                  <p className="text-xs font-mono break-all text-blue-600">
+                    {window.location.origin}/ticket?token={foundReservation.secure_token}
+                  </p>
                 </div>
               )}
 
@@ -642,7 +784,11 @@ export default function CheckInPage() {
                     onClick={handleCheckIn}
                     disabled={processing}
                   >
-                    <CheckCircle className="w-4 h-4" />
+                    {processing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4" />
+                    )}
                     Valider l'entrée
                   </Button>
                 )}
