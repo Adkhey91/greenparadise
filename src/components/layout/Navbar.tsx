@@ -83,7 +83,7 @@ export function Navbar() {
                 isChalet && "border-chalet-beige hover:bg-chalet-beige/50 text-chalet-charcoal"
               )}
             >
-              <Link to="/ticket">
+              <Link to="/mon-ticket">
                 <Ticket className="w-4 h-4" />
                 Mon Ticket
               </Link>
@@ -154,10 +154,10 @@ export function Navbar() {
                 )} 
                 asChild
               >
-                <Link to="/ticket" onClick={() => setIsOpen(false)}>
-                  <Ticket className="w-4 h-4" />
-                  Mon Ticket
-                </Link>
+                 <Link to="/mon-ticket" onClick={() => setIsOpen(false)}>
+                   <Ticket className="w-4 h-4" />
+                   Mon Ticket
+                 </Link>
               </Button>
             </div>
             <Button 

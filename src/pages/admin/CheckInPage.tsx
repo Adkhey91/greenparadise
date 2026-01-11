@@ -30,6 +30,10 @@ import {
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
+const getBarcodeDetector = () => (window as any).BarcodeDetector as
+  | (new (opts: { formats: string[] }) => { detect: (source: any) => Promise<Array<{ rawValue: string }>> })
+  | undefined;
+
 interface AdminContextData {
   reservations: any[];
   refetch: () => Promise<void>;
@@ -79,12 +83,20 @@ export default function CheckInPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const scanningRef = useRef(false);
 
   // Cleanup camera on unmount
   useEffect(() => {
     return () => {
+      scanningRef.current = false;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     };
   }, []);
@@ -92,6 +104,13 @@ export default function CheckInPage() {
   const startCamera = async () => {
     try {
       setCameraError(null);
+
+      const Detector = getBarcodeDetector();
+      if (!Detector) {
+        setCameraError("Scan QR non supporté sur cet appareil. Utilisez la saisie manuelle.");
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }
       });
@@ -99,11 +118,37 @@ export default function CheckInPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
+
       setSearchMode("camera");
-      
+      scanningRef.current = true;
+
+      // scan loop
+      const detector = new Detector({ formats: ["qr_code"] });
+      const scan = async () => {
+        if (!scanningRef.current) return;
+        try {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes?.length) {
+              const value = barcodes[0].rawValue;
+              setDebugInfo(prev => prev + `QR détecté: ${value}\n`);
+              setSearchInput(value);
+              stopCamera();
+              // lance la recherche automatiquement
+              void handleSearch(undefined, value);
+              return;
+            }
+          }
+        } catch (err: any) {
+          // ignore transient errors
+        }
+        rafRef.current = requestAnimationFrame(scan);
+      };
+      rafRef.current = requestAnimationFrame(scan);
+
       toast({
         title: "Caméra activée",
-        description: "Scannez le QR code ou entrez le code manuellement",
+        description: "Visez le QR code (détection automatique)",
       });
     } catch (error) {
       console.error("Camera error:", error);
@@ -117,6 +162,11 @@ export default function CheckInPage() {
   };
 
   const stopCamera = () => {
+    scanningRef.current = false;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -124,13 +174,17 @@ export default function CheckInPage() {
     setSearchMode("manual");
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const normalizePhone = (value: string) => value.replace(/\D/g, "");
+
+  const handleSearch = async (e?: React.FormEvent, overrideValue?: string) => {
     e?.preventDefault();
-    
-    if (!searchInput.trim()) {
+
+    const raw = (overrideValue ?? searchInput).trim();
+
+    if (!raw) {
       toast({
         title: "Champ requis",
-        description: "Entrez un numéro de réservation, téléphone ou token",
+        description: "Entrez un N° réservation + code, un téléphone, ou scannez un QR",
         variant: "destructive",
       });
       return;
@@ -140,34 +194,63 @@ export default function CheckInPage() {
     setFoundReservation(null);
     setDebugInfo("");
 
-    let input = searchInput.trim();
-    
+    let input = raw;
+
     // Extract token from URL if pasted
-    if (input.includes("/ticket?token=")) {
+    if (input.includes("/ticket?token=") || input.includes("token=")) {
       const urlMatch = input.match(/token=([^&\s]+)/);
       if (urlMatch) {
         input = urlMatch[1];
-        setDebugInfo(prev => prev + `Token extrait de l'URL: ${input.substring(0, 20)}...\n`);
+        setDebugInfo(prev => prev + `Token extrait: ${input.substring(0, 20)}...\n`);
       }
     }
-    
+
     const inputUpper = input.toUpperCase();
     let searchType = "";
     let data: any = null;
     let error: any = null;
 
+    // Support "GRN-1234 0540xxxxxx" (num + code) in one field
+    const parts = inputUpper.split(/[\s,;|/]+/).filter(Boolean);
+    const looksLikeNumber = (v: string) => v.startsWith("GRN-") || v.startsWith("RPR-");
+
     try {
+      // Strategy 0: reservation_number + code (same input)
+      if (parts.length >= 2 && looksLikeNumber(parts[0])) {
+        searchType = "reservation_number+code";
+        const resNumber = parts[0];
+        const code = parts[1];
+        setDebugInfo(prev => prev + `Recherche N°: ${resNumber} + code: ${code}\n`);
+
+        const result = await supabase
+          .from("reservations")
+          .select("*")
+          .eq("reservation_number", resNumber)
+          .maybeSingle();
+
+        data = result.data;
+        error = result.error;
+
+        if (data) {
+          const dbLast8 = normalizePhone(data.telephone).slice(-8);
+          const inputLast8 = normalizePhone(code).slice(-8);
+          setDebugInfo(prev => prev + `Vérif code: input(${inputLast8}) vs db(${dbLast8})\n`);
+          if (!inputLast8 || inputLast8 !== dbLast8) {
+            data = null;
+          }
+        }
+      }
       // Strategy 1: Search by reservation_number
-      if (inputUpper.startsWith("GRN-") || inputUpper.startsWith("RPR-")) {
+      else if (looksLikeNumber(inputUpper)) {
         searchType = "reservation_number";
         setDebugInfo(prev => prev + `Recherche par N°: ${inputUpper}\n`);
-        
+
         const result = await supabase
           .from("reservations")
           .select("*")
           .eq("reservation_number", inputUpper)
           .maybeSingle();
-        
+
         data = result.data;
         error = result.error;
       }
@@ -175,22 +258,22 @@ export default function CheckInPage() {
       else if (input.length > 30) {
         searchType = "secure_token";
         setDebugInfo(prev => prev + `Recherche par token: ${input.substring(0, 20)}...\n`);
-        
+
         const result = await supabase
           .from("reservations")
           .select("*")
           .eq("secure_token", input)
           .maybeSingle();
-        
+
         data = result.data;
         error = result.error;
       }
       // Strategy 3: Search by phone (fallback)
       else {
         searchType = "telephone";
-        const cleanPhone = input.replace(/\s/g, '');
+        const cleanPhone = normalizePhone(input);
         setDebugInfo(prev => prev + `Recherche par téléphone: ${cleanPhone}\n`);
-        
+
         const result = await supabase
           .from("reservations")
           .select("*")
@@ -198,12 +281,12 @@ export default function CheckInPage() {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         data = result.data;
         error = result.error;
       }
 
-      setDebugInfo(prev => prev + `Type: ${searchType}\nRésultat: ${data ? 'Trouvé ✓' : 'Non trouvé ✗'}\n`);
+      setDebugInfo(prev => prev + `Type: ${searchType}\nRésultat: ${data ? "Trouvé ✓" : "Non trouvé ✗"}\n`);
       if (error) {
         setDebugInfo(prev => prev + `Erreur: ${error.message}\n`);
       }
@@ -227,7 +310,7 @@ export default function CheckInPage() {
 
     setFoundReservation(data as FoundReservation);
     setSelectedTableId(data.table_id || "");
-    
+
     // Fetch available tables for this venue
     await fetchAvailableTables(data.reservation_number?.startsWith("RPR-") ? "RESTAURANT" : "GARDEN");
   };

@@ -57,7 +57,7 @@ export default function TicketPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!telephone.trim() || !reservationNumber.trim()) {
       toast({
         title: "Champs requis",
@@ -71,37 +71,21 @@ export default function TicketPage() {
     setNotFound(false);
     setReservation(null);
 
-    const cleanPhone = telephone.replace(/\s/g, '');
+    const cleanPhone = telephone.replace(/\s/g, "");
     const cleanReservationNumber = reservationNumber.trim().toUpperCase();
 
-    const { data, error } = await supabase
-      .from("reservations")
-      .select("*")
-      .eq("reservation_number", cleanReservationNumber)
-      .single();
+    const { data, error: invokeError } = await supabase.functions.invoke("ticket-lookup", {
+      body: { reservationNumber: cleanReservationNumber, phone: cleanPhone },
+    });
 
     setSearching(false);
 
-    if (error || !data) {
+    if (invokeError || !(data as any)?.reservation) {
       setNotFound(true);
       return;
     }
 
-    const dbPhoneClean = data.telephone.replace(/\s/g, '');
-    const inputPhoneLast8 = cleanPhone.slice(-8);
-    const dbPhoneLast8 = dbPhoneClean.slice(-8);
-
-    if (inputPhoneLast8 !== dbPhoneLast8) {
-      setNotFound(true);
-      toast({
-        title: "Non trouvé",
-        description: "Le numéro de téléphone ne correspond pas",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setReservation(data as Reservation);
+    setReservation(((data as any).reservation as Reservation) || null);
   };
 
   const handlePrint = () => {
@@ -328,7 +312,7 @@ export default function TicketPage() {
                       size={180}
                       level="H"
                       includeMargin={true}
-                      fgColor={isRestaurant ? "#2A211C" : "#0a3a0a"}
+                      fgColor={"#000000"}
                     />
                   </div>
                   <p className={`text-xs mt-3 text-center ${
@@ -502,17 +486,17 @@ export default function TicketPage() {
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Table</p>
                       <p className={`text-lg font-bold ${isRestaurant ? "text-chalet-charcoal" : "text-foreground"}`}>
-                        {reservation.table_number_snapshot || "À l'accueil"}
+                        {reservation.table_number_snapshot || (reservation as any).table_label || "À l'accueil"}
                       </p>
                     </div>
                   </div>
-                  {reservation.table_number_snapshot && (
+                  {(reservation.table_number_snapshot || (reservation as any).table_label) && (
                     <Badge className={`text-lg px-3 py-1 ${
                       isRestaurant 
                         ? "bg-chalet-gold text-chalet-charcoal" 
                         : "bg-primary text-primary-foreground"
                     }`}>
-                      N° {reservation.table_number_snapshot}
+                      {reservation.table_number_snapshot || (reservation as any).table_label}
                     </Badge>
                   )}
                 </div>
