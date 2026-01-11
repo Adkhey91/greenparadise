@@ -40,6 +40,8 @@ interface Reservation {
   total_price: number | null;
   table_id: string | null;
   table_number_snapshot: string | null;
+  /** Résolu côté backend (fallback si snapshot vide) */
+  table_label?: string | null;
   confirmed_at: string | null;
   checked_in_at: string | null;
   venue_id: string | null;
@@ -69,26 +71,26 @@ export default function TicketByTokenPage() {
     setLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await supabase
-      .from("reservations")
-      .select("*")
-      .eq("secure_token", token)
-      .maybeSingle();
+    const { data, error: invokeError } = await supabase.functions.invoke("ticket-lookup", {
+      body: { token },
+    });
 
     setLoading(false);
 
-    if (fetchError) {
-      console.error("Fetch error:", fetchError);
-      setError("Erreur lors de la récupération du ticket");
+    if (invokeError) {
+      console.error("Ticket lookup error:", invokeError);
+      setError("Ticket invalide");
       return;
     }
 
-    if (!data) {
-      setError("Ticket invalide ou expiré");
+    const reservationData = (data as any)?.reservation as Reservation | undefined;
+
+    if (!reservationData) {
+      setError("Ticket invalide");
       return;
     }
 
-    setReservation(data as Reservation);
+    setReservation(reservationData);
   };
 
   const handlePrint = () => {
@@ -175,7 +177,7 @@ export default function TicketByTokenPage() {
               <p className="text-muted-foreground">{error || "Ce ticket n'existe pas"}</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button asChild>
-                  <Link to="/ticket">Retrouver ma réservation</Link>
+                  <Link to="/mon-ticket">Retrouver ma réservation</Link>
                 </Button>
                 <Button variant="outline" asChild>
                   <Link to="/">Retour à l'accueil</Link>
@@ -200,8 +202,10 @@ export default function TicketByTokenPage() {
   const venueName = isRestaurant ? "Le Repère" : "Jardin";
   const VenueIcon = isRestaurant ? UtensilsCrossed : TreePine;
   
-  // QR Code value
+  // QR Code value (URL absolue scannable)
   const qrValue = `${window.location.origin}/ticket?token=${reservation.secure_token}`;
+
+  const tableDisplay = reservation.table_number_snapshot || reservation.table_label || "À l'accueil";
 
   return (
     <Layout>
@@ -252,7 +256,7 @@ export default function TicketByTokenPage() {
                       size={180}
                       level="H"
                       includeMargin={true}
-                      fgColor={isRestaurant ? "#2A211C" : "#0a3a0a"}
+                      fgColor={"#000000"}
                     />
                   </div>
                   <p className={`text-xs mt-3 text-center ${
@@ -405,17 +409,17 @@ export default function TicketByTokenPage() {
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">Table</p>
                       <p className={`text-lg font-bold ${isRestaurant ? "text-chalet-charcoal" : "text-foreground"}`}>
-                        {reservation.table_number_snapshot || "À l'accueil"}
+                        {tableDisplay}
                       </p>
                     </div>
                   </div>
-                  {reservation.table_number_snapshot && (
+                  {tableDisplay !== "À l'accueil" && (
                     <Badge className={`text-lg px-3 py-1 ${
                       isRestaurant 
                         ? "bg-chalet-gold text-chalet-charcoal" 
                         : "bg-primary text-primary-foreground"
                     }`}>
-                      N° {reservation.table_number_snapshot}
+                      {tableDisplay}
                     </Badge>
                   )}
                 </div>
