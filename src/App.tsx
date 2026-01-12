@@ -24,6 +24,7 @@ import SettingsPage from "./pages/admin/SettingsPage";
 import GardenManagementPage from "./pages/admin/GardenManagementPage";
 import ContentManagementPage from "./pages/admin/ContentManagementPage";
 import RestoManagementPage from "./pages/admin/RestoManagementPage";
+import TablesPage from "./pages/admin/TablesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="reservations" element={<ReservationsPage />} />
               <Route path="checkin" element={<CheckInPage />} />
               <Route path="walkin" element={<WalkInPage />} />
+              <Route path="tables" element={<TablesPage />} />
               <Route path="messages" element={<MessagesPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
